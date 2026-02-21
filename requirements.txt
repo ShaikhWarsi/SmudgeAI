@@ -1,0 +1,17 @@
+google-generativeai
+SpeechRecognition
+pyaudio
+pywinauto
+PyQt5
+pyautogui
+Pillow
+edge-tts
+pygame
+pygetwindow
+beautifulsoup4
+requests
+googlesearch-python
+pyperclip
+pynput
+python-dotenv
+groq

@@ -1,127 +1,93 @@
+# Jarvis: Autonomous Agent for Developer Workflows
 
-# 🎙️ JarvisAI – AI-Powered Task Automation Assistant 🚀
+![Status](https://img.shields.io/badge/Status-Beta-orange) ![Python](https://img.shields.io/badge/Python-3.11%2B-blue) ![AI](https://img.shields.io/badge/AI-Gemini%202.0%20Flash-purple) ![License](https://img.shields.io/badge/License-MIT-green)
 
-# 🚧 Work in Progress: This is still in a early development stage, More GUI and many many many more features coming soon
-
-**JarvisAI** is an advanced AI-powered voice assistant that listens to voice commands, evaluates the task, generates the appropriate Python code, and automatically executes it.  
-Powered by **Google Gemini-2.0-Flash** for intelligent code generation and task handling.
+**Jarvis** is an autonomous agent designed specifically for **Developer Workflows**. Unlike generic chatbots, Jarvis is an active pair programmer that lives in your environment, debugging code, managing files, and automating repetitive engineering tasks with human-in-the-loop safety.
 
 ---
 
-## 🔥 **Features**
+## 🚀 Key Capabilities
 
-✅ Voice recognition using speech_recognition  
-✅ AI-powered task evaluation and Python code generation using Google Gemini  
-✅ Automatic execution of generated code  
-✅ Real-time speech feedback with pyttsx3  
-✅ Error handling and feedback  
+### 1. Self-Healing Code Execution 🩹
+- **Problem**: Most agents crash when their generated code fails.
+- **Solution**: Jarvis captures `stderr`, feeds it back to the LLM, analyzes the root cause, and **rewrites the script automatically**. It iterates until the code works or a maximum retry limit is reached.
+- **Use Case**: "Fix this script" -> Jarvis runs it, sees the error, patches it, and verifies the fix.
 
----
+### 2. Intelligent Context Awareness 🧠
+- **Feature**: Smart Window Analysis.
+- **How it works**: Jarvis detects your active window (e.g., "main.py - VS Code") to infer context. If you say "Debug this", it knows exactly what "this" refers to without needing a file upload.
 
-## 📂 **Project Structure**
+### 3. Safe Mode (Human-in-the-Loop) 🛡️
+- **Philosophy**: AI should be powerful but controllable.
+- **Implementation**: 
+  - **Read-Only Default**: Jarvis can read screens and files freely.
+  - **Active Confirmation**: Any destructive action (File Deletion, Shell Execution, System Shutdown) requires explicit user approval via a native OS dialog.
+  - **Visual Indicator**: The UI clearly signals when Safe Mode is active (Green Shield).
 
-📁 Assistant Stage 1
- ├── ai_engine.py        # Handles interaction with Google Gemini AI
- ├── config.py           # API key configuration
- ├── gui.py              # GUI interface (if applicable)
- ├── main.py             # Main entry point to run the assistant
- ├── speech_engine.py    # Handles speech recognition
- ├── task_manager.py     # Manages task execution
- ├── generated_task.py   # Stores generated code temporarily
- ├── README.md           # Project documentation
- └── requirements.txt    # Python dependencies
-
----
-
-## ⚙️ **Setup Instructions**
-
-### 1️⃣ Clone the repository
-Clone the project from GitHub:
-git clone https://github.com/your-username/JarvisAI.git
-cd JarvisAI
-
-### 2️⃣ Install Dependencies
-Install the required Python packages:
-pip install -r requirements.txt
-
-### 3️⃣ Set Up Google Gemini API
-1. Go to Google AI Studio  
-2. Generate your API key.  
-3. Add it to the config.py file:
-# /config.py
-GEMINI_API_KEY = "YOUR_GOOGLE_GEMINI_API_KEY"
-
-### 4️⃣ Run the Application
-Start the assistant:
-python main.py
+### 4. Deep Technical Research 🔍
+- **Feature**: Real-time access to documentation and tech stacks.
+- **Tech**: Integrates **Tavily/Serper APIs** to fetch the latest API references, library updates, or GitHub issues, ensuring code suggestions aren't outdated.
 
 ---
 
-## 🎯 **Usage**
+## 🛠️ Installation & Setup
 
-1. The assistant will listen for your command.  
-2. It will evaluate the task and display the description.  
-3. The assistant generates Python code to complete the task.  
-4. It automatically executes the generated code.  
-5. You get real-time voice feedback and execution results.  
+### Prerequisites
+- Python 3.9+
+- Google Cloud API Key (Gemini) OR Groq API Key
 
----
+### Quick Start
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-repo/jarvis-ai.git
+   cd jarvis-ai
+   ```
 
-## 🚀 **Example Commands**
+2. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-✅ "Open Google" → Opens Google in the browser.  
-✅ "Create a folder named 'test'" → Generates and runs Python code to create the folder.  
-✅ "Get current weather in New York" → Fetches weather data using Python requests.  
-✅ "Generate a random password" → Creates and displays a secure random password.  
+3. **Configure Environment**:
+   - Rename `.env.example` to `.env` and fill in your keys:
+     ```ini
+     # AI Provider (gemini or groq)
+     AI_PROVIDER=gemini
 
----
+     # Keys
+     GOOGLE_API_KEY=your_gemini_key
+     GROQ_API_KEY=your_groq_key
+     
+     TAVILY_API_KEY=your_tavily_key_here  # Optional for Deep Search
+     ```
 
-## 🔥 **Tech Stack**
-
-- Google Gemini 2.0 Flash – AI-powered task evaluation & code generation  
-- Python 3.x – Backend programming  
-- SpeechRecognition – For voice input  
-- Pyttsx3 – For text-to-speech feedback  
-- Subprocess & OS – For script execution  
-
----
-
-## ✅ **Enhancements & To-Do**
-
-- [x] Voice-controlled task execution  
-- [x] Automatic script generation  
-- [ ] Task history and logs  
-- [ ] GUI improvements (custom themes)  
-- [ ] Security prompts before executing scripts  
-
----
-
-## 📄 **License**
-This project is licensed under the MIT License.  
-Feel free to use and modify it.
+4. **Run**:
+   ```bash
+   python main.py
+   ```
 
 ---
 
-## 🤝 **Contributing**
+## 🏗️ Architecture & Security
 
-Contributions are welcome!  
-1. Fork the repository  
-2. Create a new branch:  
-git checkout -b feature-branch  
-3. Commit your changes:  
-git commit -m "Add new feature"  
-4. Push to the branch:  
-git push origin feature-branch  
-5. Open a Pull Request  
+### The "Sandbox" Reality
+- **Current State (MVP)**: Jarvis operates within a defined `workspace/` directory for file creation to prevent accidental system clutter. 
+- **Production Roadmap**: The production version will utilize ephemeral **Docker Containers** for each task execution to ensure complete isolation and security.
 
----
-
-## 📬 **Contact**
-
-- GitHub: Your GitHub Profile  
-- Email: axeeddis@gmail.com  
+### Core Modules
+- **`gui.py`**: Modern PyQt5 interface with non-intrusive notifications and status cycling.
+- **`ai_engine.py`**: Manages Gemini 2.0 Flash sessions with a specialized "Developer Persona" system prompt.
+- **`task_manager.py`**: Handles tool execution with robust error handling and Safe Mode enforcement.
+- **`workflow_learner.py`**: Experimental module for learning repetitive GUI tasks via computer vision.
 
 ---
 
+## 🧪 Testing
 
+Run the unit test suite to verify core functionality:
+```bash
+python -m unittest discover tests
+```
 
+---
+*Built for Hackathon 2026. Focused on practical developer utility, not hype.*

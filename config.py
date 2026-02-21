@@ -1,3 +1,44 @@
-GOOGLE_API_KEY = ""
-EMAIL_USER = "YOUR_EMAIL@gmail.com"  # or your email address
-EMAIL_PASSWORD = "YOUR_EMAIL_PASSWORD"
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# AI Provider Configuration
+# Options: "gemini", "groq"
+AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini")
+
+# Google Gemini API Key
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "AIzaSyC07XkTDfL6Q1i3mGWfl-ENQjnWPpNrMkE")
+
+# Groq API Key
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+# Groq Models (with automatic cycling on rate limit)
+GROQ_MODELS = [ 
+    "llama-3.3-70b-versatile", 
+    "llama-3.1-8b-instant", 
+    "openai/gpt-oss-120b", 
+    "openai/gpt-oss-20b", 
+    # Preview Models 
+    "meta-llama/llama-4-maverick-17b-128e-instruct", 
+    "meta-llama/llama-4-scout-17b-16e-instruct", 
+    "qwen/qwen3-32b", 
+    "moonshotai/kimi-k2-instruct-0905", 
+    "canopylabs/orpheus-v1-english" 
+]
+
+# Search API Keys (Optional)
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+SERPER_API_KEY = os.getenv("SERPER_API_KEY")
+
+# Email Configuration
+EMAIL_USER = os.getenv("EMAIL_USER", "YOUR_EMAIL@gmail.com")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "YOUR_EMAIL_PASSWORD")
+
+# Logging Configuration
+LOG_FILE = "jarvis.log"
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+# Safety Configuration
+SAFE_MODE = True  # Default to Safe Mode (Human-in-the-Loop) for demo safety
