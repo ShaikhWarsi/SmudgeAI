@@ -14,18 +14,14 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "AIzaSyC07XkTDfL6Q1i3mGWfl-ENQjnWPp
 # Groq API Key
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
-# Groq Models (with automatic cycling on rate limit)
+# Groq Models (Reliable List for Fallback)
 GROQ_MODELS = [ 
     "llama-3.3-70b-versatile", 
     "llama-3.1-8b-instant", 
-    "openai/gpt-oss-120b", 
-    "openai/gpt-oss-20b", 
-    # Preview Models 
-    "meta-llama/llama-4-maverick-17b-128e-instruct", 
-    "meta-llama/llama-4-scout-17b-16e-instruct", 
-    "qwen/qwen3-32b", 
-    "moonshotai/kimi-k2-instruct-0905", 
-    "canopylabs/orpheus-v1-english" 
+    "llama3-70b-8192", 
+    "llama3-8b-8192", 
+    "mixtral-8x7b-32768", 
+    "gemma2-9b-it" 
 ]
 
 # Search API Keys (Optional)

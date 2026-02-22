@@ -10,11 +10,13 @@ from faster_whisper import WhisperModel
 
 # logging.basicConfig(level=logging.INFO)
 
-# Initialize Pygame Mixer
-try:
-    pygame.mixer.init()
-except Exception as e:
-    logging.error(f"Failed to initialize Pygame mixer: {e}")
+# Initialize Pygame Mixer Lazily
+def _ensure_mixer():
+    if not pygame.mixer.get_init():
+        try:
+            pygame.mixer.init()
+        except Exception as e:
+            logging.error(f"Failed to initialize Pygame mixer: {e}")
 
 # Voice Configuration
 VOICE = "en-GB-RyanNeural" 
@@ -24,18 +26,33 @@ VOICE = "en-GB-RyanNeural"
 MODEL_SIZE = "base.en" 
 try:
     logging.info(f"Loading Faster Whisper Model ({MODEL_SIZE})...")
-    whisper_model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
-    logging.info("Faster Whisper Loaded.")
+    # CRASH FIX: 'int8' quantization causes Access Violation (0xC0000005) on some Windows CPUs without VNNI.
+    # Switching to 'float32' is safer (though slower) or disabling it to use Google API fallback.
+    # For Hackathon stability, we default to Google API (whisper_model = None) if this crashes, 
+    # but since we can't catch SegFaults, we'll comment it out for safety unless requested.
+    
+    # UNCOMMENT TO TRY LOCAL WHISPER (May crash on some PCs):
+    # whisper_model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
+    # logging.info("Faster Whisper Loaded.")
+    whisper_model = None # Force fallback to Google Speech Recognition
+    logging.warning("Faster Whisper disabled for stability. Using Google Speech Recognition.")
 except Exception as e:
     logging.error(f"Failed to load Faster Whisper: {e}")
     whisper_model = None
 
 # TTS Cache
-CACHE_DIR = os.path.join(os.getcwd(), "tts_cache")
+CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tts_cache")
 if not os.path.exists(CACHE_DIR):
     os.makedirs(CACHE_DIR)
 
 _is_speaking = False
+SILENT_MODE = False
+
+def set_silent_mode(enabled: bool):
+    global SILENT_MODE
+    SILENT_MODE = enabled
+    if enabled:
+        stop_speaking()
 
 def stop_speaking():
     """Stops the current speech playback immediately."""
@@ -51,10 +68,16 @@ def stop_speaking():
 async def speak(text):
     """Generates speech using Edge-TTS and plays it with Pygame (with Caching)."""
     global _is_speaking
+    
+    if SILENT_MODE:
+        logging.info(f"Silent Mode (Speech Suppressed): {text}")
+        return
+
     if not text:
         return
 
     # Check for interruption before starting
+    _ensure_mixer()
     if not pygame.mixer.get_init():
         return
 
@@ -119,7 +142,7 @@ def listen_sync():
             command = " ".join([segment.text for segment in segments]).strip().lower()
         else:
             # Fallback if model failed to load
-            logging.warning("Faster Whisper not loaded, falling back to Google.")
+            # logging.debug("Faster Whisper not loaded, falling back to Google.")
             command = recognizer.recognize_google(audio).lower()
             
         # Cleanup
@@ -131,8 +154,13 @@ def listen_sync():
         logging.info(f"User said: {command}")
         return command
             
+    except (sr.UnknownValueError, sr.WaitTimeoutError):
+        # Benign errors (silence or timeout)
+        return None
+        
     except Exception as e:
-        logging.error(f"Speech Error: {e}")
+        import traceback
+        logging.error(f"Speech Error: {repr(e)}\n{traceback.format_exc()}")
         return None
 
 async def listen():

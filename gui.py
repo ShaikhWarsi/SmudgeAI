@@ -3,6 +3,7 @@ import threading
 import asyncio
 import logging
 import os
+import json
 import pyautogui
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QLabel, QLineEdit, QVBoxLayout, QWidget, 
@@ -14,6 +15,7 @@ from PyQt5.QtCore import Qt, QSize, QPoint, pyqtSignal, QObject, QTimer, QProper
 import speech_engine
 import task_manager
 import config
+import ai_engine
 
 # Configure Logging
 logging.basicConfig(
@@ -42,6 +44,9 @@ class Worker(QObject):
 class ModernAssistant(QMainWindow):
     update_status_signal = pyqtSignal(str)
     update_result_signal = pyqtSignal(str)
+    ask_permission_signal = pyqtSignal(str, object) # text, event
+    tool_log_signal = pyqtSignal(str, object) # name, args
+    stop_signal = pyqtSignal()
     
     def __init__(self):
         super().__init__()
@@ -52,6 +57,8 @@ class ModernAssistant(QMainWindow):
         
         # Connect task_manager status updates to UI
         task_manager.set_status_callback(self.update_status_signal.emit)
+        task_manager.set_permission_callback(self.ask_permission_gui)
+        task_manager.set_tool_execution_callback(self.tool_log_signal.emit)
 
         self.listening = True
         self.is_processing = False
@@ -72,6 +79,9 @@ class ModernAssistant(QMainWindow):
         # Signals
         self.update_status_signal.connect(self.update_status)
         self.update_result_signal.connect(self.show_result)
+        self.ask_permission_signal.connect(self.show_permission_dialog)
+        self.tool_log_signal.connect(self.log_tool_execution)
+        self.stop_signal.connect(self.stop_action)
 
         # Breathing Animation Timer
         self.glow_timer = QTimer(self)
@@ -175,6 +185,16 @@ class ModernAssistant(QMainWindow):
         self.learn_btn.setToolTip("One-Shot Learning (Watch & Learn)")
         self.top_layout.addWidget(self.learn_btn)
         
+        # Silent Mode Toggle
+        self.silent_btn = QPushButton("🔇", self)
+        self.silent_btn.setCursor(Qt.PointingHandCursor)
+        self.silent_btn.setCheckable(True)
+        self.silent_btn.setChecked(False)
+        self.silent_btn.clicked.connect(self.toggle_silent_mode)
+        self.style_button(self.silent_btn, color="#AAAAAA")
+        self.silent_btn.setToolTip("Silent Mode (Toggle Speech)")
+        self.top_layout.addWidget(self.silent_btn)
+        
         # Safe Mode Toggle
         self.safe_btn = QPushButton("🛡️", self)
         self.safe_btn.setCursor(Qt.PointingHandCursor)
@@ -199,7 +219,13 @@ class ModernAssistant(QMainWindow):
         
         self.main_layout.addWidget(self.top_bar_widget)
 
-        # 4. Output Area (TextEdit)
+        # Content Area (Horizontal Layout)
+        self.content_widget = QWidget()
+        self.content_layout = QHBoxLayout(self.content_widget)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setSpacing(10)
+        
+        # 4. Output Area (Left)
         self.output_area = QTextEdit(self)
         self.output_area.setReadOnly(True)
         self.output_area.setFont(QFont("Consolas", 10))
@@ -212,7 +238,25 @@ class ModernAssistant(QMainWindow):
                 padding: 10px;
             }
         """)
-        self.main_layout.addWidget(self.output_area)
+        self.content_layout.addWidget(self.output_area, stretch=7)
+        
+        # 5. Thought Bubble / Tool Log (Right)
+        self.tool_log_area = QTextEdit(self)
+        self.tool_log_area.setReadOnly(True)
+        self.tool_log_area.setPlaceholderText("🧠 Neural Activity...")
+        self.tool_log_area.setFont(QFont("Consolas", 9))
+        self.tool_log_area.setStyleSheet("""
+            QTextEdit {
+                background-color: rgba(0, 20, 40, 50);
+                color: #00FFFF;
+                border: 1px solid rgba(0, 255, 255, 20);
+                border-radius: 10px;
+                padding: 10px;
+            }
+        """)
+        self.content_layout.addWidget(self.tool_log_area, stretch=3)
+        
+        self.main_layout.addWidget(self.content_widget)
 
         # Glassmorphism Background
         self.central_widget.setStyleSheet("""
@@ -298,6 +342,23 @@ class ModernAssistant(QMainWindow):
 
     # --- Logic ---
 
+    def log_tool_execution(self, tool_name, args):
+        """Displays the tool call in the thought bubble."""
+        try:
+            arg_str = json.dumps(args, indent=2)
+            # Remove braces for cleaner look
+            arg_str = arg_str.replace('{', '').replace('}', '').strip()
+            
+            log_entry = f"<b style='color: #00FFFF;'>[TOOL] {tool_name}</b><br><span style='color: #AAAAAA;'>{arg_str}</span><br>"
+            self.tool_log_area.append(log_entry)
+            
+            # Auto scroll
+            cursor = self.tool_log_area.textCursor()
+            cursor.movePosition(QTextCursor.End)
+            self.tool_log_area.setTextCursor(cursor)
+        except:
+            self.tool_log_area.append(f"[TOOL] {tool_name}")
+
     def animate_glow(self):
         """Breathing animation for the shadow/glow."""
         if self.glow_direction == 1:
@@ -310,6 +371,81 @@ class ModernAssistant(QMainWindow):
                 self.glow_direction = 1
         
         self.shadow.setBlurRadius(self.glow_value)
+
+    def ask_permission_gui(self, text):
+        """Called by task_manager from a background thread."""
+        event = threading.Event()
+        self.permission_result = False # Default deny
+        self.ask_permission_signal.emit(text, event)
+        event.wait() # Block the background thread until UI answers
+        return self.permission_result
+
+    def show_permission_dialog(self, text, event):
+        """Shows a modal-like overlay for permission."""
+        # Create overlay if not exists
+        if not hasattr(self, 'perm_overlay'):
+             self.perm_overlay = QWidget(self)
+             self.perm_overlay.setObjectName("perm_overlay")
+             self.perm_overlay.setStyleSheet("background-color: rgba(20, 20, 20, 240); border-radius: 20px; border: 2px solid #FF5555;")
+             
+             # Center it
+             w, h = 400, 250
+             self.perm_overlay.setGeometry((self.width() - w)//2, (self.height() - h)//2, w, h)
+             
+             layout = QVBoxLayout(self.perm_overlay)
+             
+             title = QLabel("⚠️ PERMISSION REQUIRED", self.perm_overlay)
+             title.setStyleSheet("color: #FF5555; font-size: 20px; font-weight: bold;")
+             title.setAlignment(Qt.AlignCenter)
+             layout.addWidget(title)
+             
+             self.perm_label = QLabel(text, self.perm_overlay)
+             self.perm_label.setWordWrap(True)
+             self.perm_label.setStyleSheet("color: white; font-size: 14px;")
+             self.perm_label.setAlignment(Qt.AlignCenter)
+             layout.addWidget(self.perm_label)
+             
+             btn_layout = QHBoxLayout()
+             
+             deny_btn = QPushButton("DENY", self.perm_overlay)
+             deny_btn.setCursor(Qt.PointingHandCursor)
+             deny_btn.setStyleSheet("background-color: #FF5555; color: white; border-radius: 5px; padding: 8px; font-weight: bold;")
+             deny_btn.clicked.connect(self.deny_permission)
+             
+             allow_btn = QPushButton("ALLOW", self.perm_overlay)
+             allow_btn.setCursor(Qt.PointingHandCursor)
+             allow_btn.setStyleSheet("background-color: #00FF00; color: black; border-radius: 5px; padding: 8px; font-weight: bold;")
+             allow_btn.clicked.connect(self.allow_permission)
+             
+             btn_layout.addWidget(deny_btn)
+             btn_layout.addWidget(allow_btn)
+             layout.addLayout(btn_layout)
+             
+             # Add shadow
+             shadow = QGraphicsDropShadowEffect()
+             shadow.setBlurRadius(50)
+             shadow.setColor(QColor(0, 0, 0, 200))
+             self.perm_overlay.setGraphicsEffect(shadow)
+
+        self.perm_label.setText(text)
+        self.current_perm_event = event
+        self.perm_overlay.show()
+        self.perm_overlay.raise_()
+        
+        # Flash the window to get attention
+        QApplication.alert(self)
+
+    def allow_permission(self):
+        self.permission_result = True
+        self.perm_overlay.hide()
+        if hasattr(self, 'current_perm_event'):
+            self.current_perm_event.set()
+
+    def deny_permission(self):
+        self.permission_result = False
+        self.perm_overlay.hide()
+        if hasattr(self, 'current_perm_event'):
+            self.current_perm_event.set()
 
     def update_status(self, text):
         self.input_field.setPlaceholderText(text)
@@ -374,6 +510,18 @@ class ModernAssistant(QMainWindow):
             self.style_button(self.safe_btn, color="#AAAAAA")
             self.show_result("Safe Mode Disabled. Running in Autonomous Mode.")
             self.update_status_signal.emit("Autonomous Mode")
+
+    def toggle_silent_mode(self):
+        is_silent = self.silent_btn.isChecked()
+        speech_engine.set_silent_mode(is_silent)
+        
+        if is_silent:
+            self.style_button(self.silent_btn, color="#FF5555") # Red for silent
+            self.show_result("Silent Mode Enabled. Shhh.")
+        else:
+            self.style_button(self.silent_btn, color="#AAAAAA")
+            self.show_result("Silent Mode Disabled. I can speak again.")
+
 
     def toggle_monitor(self):
         if not hasattr(self, 'monitor'):
@@ -536,20 +684,38 @@ class ModernAssistant(QMainWindow):
     def listen_loop(self):
         """Background thread for always-on listening."""
         while True:
-            # Pause listening if we are processing or speaking
-            if self.listening and not self.is_processing:
+            # Always listen, even if processing (for interruption)
+            if self.listening:
                 try:
                     # Run synchronous listen in this thread
+                    # Ensure listen_sync is non-blocking or has short timeout
                     text = speech_engine.listen_sync() 
+                    
                     if text:
+                        text_lower = text.lower()
+                        logging.info(f"Heard: {text}")
                         self.update_status_signal.emit(f"Heard: {text}")
+                        
+                        # 1. Check for Interruption / Stop Command
+                        if any(word in text_lower for word in ["stop", "shut up", "cancel", "abort", "quiet"]):
+                            self.stop_signal.emit()
+                            self.worker.run_task(speech_engine.speak("Stopped."))
+                            continue
+
+                        # 2. If processing, ignore other commands (or queue them)
+                        if self.is_processing:
+                            logging.info("Ignored command while processing (busy).")
+                            continue
+                            
+                        # 3. Process new command
                         self.is_processing = True # Lock
                         self.worker.run_task(self.execute_async(text))
+                        
                 except Exception as e:
                     logging.error(f"Listening error: {e}")
             
             # Sleep briefly to prevent CPU hogging
-            threading.Event().wait(0.5)
+            threading.Event().wait(0.1)
 
     def toggle_listening(self):
         self.listening = not self.listening
@@ -577,6 +743,7 @@ def run_gui():
     app.setWindowIcon(app_icon)
 
     window = ModernAssistant()
+    print("GUI Started Successfully")
     window.show()
     sys.exit(app.exec_())
 

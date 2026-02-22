@@ -61,14 +61,20 @@ async def _get_groq_response(messages, tools=None):
         try:
             logging.info(f"Using Groq Model: {model_name}")
             
+            # Construct kwargs dynamically to avoid passing None for tool_choice
+            kwargs = {
+                "model": model_name,
+                "messages": messages,
+                "max_tokens": 4096
+            }
+            if groq_tools:
+                kwargs["tools"] = groq_tools
+                kwargs["tool_choice"] = "auto"
+            
             # Create completion
             completion = await asyncio.to_thread(
                 groq_client.chat.completions.create,
-                model=model_name,
-                messages=messages,
-                tools=groq_tools,
-                tool_choice="auto" if groq_tools else None,
-                max_tokens=4096
+                **kwargs
             )
             
             return completion
@@ -76,6 +82,7 @@ async def _get_groq_response(messages, tools=None):
         except groq.RateLimitError:
             logging.warning(f"Rate limit hit for {model_name}. Cycling model...")
             current_groq_model_index = (current_groq_model_index + 1) % len(GROQ_MODELS)
+            await asyncio.sleep(1)
             continue
             
         except Exception as e:
@@ -83,8 +90,9 @@ async def _get_groq_response(messages, tools=None):
             # Cycle on other errors too if it looks like a model availability issue or tool use failure (400)
             # The specific error for tool failure is 400 with 'tool_use_failed'
             error_str = str(e).lower()
-            if "rate limit" in error_str or "429" in error_str or "400" in error_str or "tool_use_failed" in error_str:
+            if "rate limit" in error_str or "429" in error_str or "400" in error_str or "tool_use_failed" in error_str or "not found" in error_str:
                  current_groq_model_index = (current_groq_model_index + 1) % len(GROQ_MODELS)
+                 await asyncio.sleep(1)
                  continue
             return f"Error with Groq: {e}"
             
@@ -94,6 +102,13 @@ SYSTEM_INSTRUCTION = """
 You are Jarvis, an Autonomous Agent specialized in Developer Workflows.
 You are an expert pair programmer, debugger, and system architect.
 Your goal is to accelerate development tasks: coding, debugging, and file management.
+
+### IMPORTANT: TOOL CALLING FORMAT
+- You MUST use the standard JSON tool calling schema provided by the system.
+- **DO NOT** use XML tags like `<function>` or `<tool_code>`.
+- **DO NOT** output markdown for tool calls.
+- **DO NOT** include any conversational text before or after the tool call.
+- Just output the JSON object for the function call.
 
 ### IDENTITY & BEHAVIOR:
 - **Tone**: Professional, precise, and efficient. No fluff. Think "Senior Engineer" or "CTO".
@@ -113,23 +128,43 @@ Your goal is to accelerate development tasks: coding, debugging, and file manage
    - Repeat until success or max retries.
    - DO NOT ask for permission to fix syntax errors. JUST FIX IT.
 
-2. **Smart Context & RAG**:
+2. **Universal Computer Use (The "Do Anything" Protocol)**:
+   - If a user request matches a specific tool (e.g., "Open Chrome"), USE IT.
+   - **CRITICAL**: If NO specific tool matches (e.g., "Change Discord status", "Like this post", "Crop image"), use `computer_use_fallback(instruction)`.
+   - `computer_use_fallback` is your **eyes and hands**. It allows you to click/type on ANYTHING by seeing the screen.
+   - NEVER say "I can't do that" because of missing tools. Use the fallback.
+
+3. **Smart Context & RAG**:
    - You have access to the active window title. Use it to infer context.
    - Use `read_project_context(keywords="...")` to find relevant files instead of reading everything.
    - If the user says "Fix auth", call `read_project_context(keywords="auth, login")`.
 
-3. **Vision-Guided Interaction**:
-   - Use `vision_click("description")` to find and click elements visually.
-   - Prefer this over `click_at_coordinates` for robustness.
-   - If you need to see the screen, use `take_screenshot`.
+4. **Robust UI Automation**:
+   - **PREFERRED**: `click_element_by_name("Save")` (Accessibility APIs).
+   - **FALLBACK**: `computer_use_fallback("Click the Save button")` (Vision).
+   - **AVOID**: Blind guessing of coordinates.
 
-4. **Web Navigation (Playwright)**:
-   - Use `browse_web`, `web_click`, `web_type` for reliable browser automation.
-   - These tools use a real browser (not headless), so the user sees the action.
+5. **Web Navigation (Playwright)**:
+   - Use `browse_web(url)` to open a page.
+   - **CRITICAL**: IMMEDIATELY call `get_web_elements()` to see the page content with IDs (e.g., "[1] Button: Login").
+   - Then use `web_click_id(1)` or `web_type_id(2, "text")`.
+   - DO NOT guess CSS selectors. Trust the IDs from `get_web_elements()`.
+   - If the page changes, call `get_web_elements()` again to get fresh IDs.
 
-5. **Planner Awareness**:
+6. **Planner Awareness**:
    - Complex tasks are automatically broken down into steps.
    - Execute the current step efficiently.
+   - If a task is "Computer Use" heavy (e.g., "Find the meme and send it"), use a loop of:
+     - `take_screenshot()`
+     - `analyze_image()`
+     - Action
+
+7. **Tool Arguments Safety**:
+   - NEVER pass code (e.g., `read_clipboard()`, `os.getcwd()`) as a function argument.
+   - Arguments must be STATIC strings, integers, or booleans.
+   - CORRECT: `open_website(url="https://reddit.com/user/john")`
+   - INCORRECT: `open_website(url="https://reddit.com/user/" + read_clipboard())` -> This will FAIL.
+   - If you need dynamic data, get it in a separate step (e.g., `clip = read_clipboard()`) then use the value.
 
 Always output clear, executable code or direct answers.
 """
@@ -199,45 +234,65 @@ def initialize_model(tools_list):
 
 async def fix_code(original_code, error_message):
     """
-    Uses the AI model to fix the broken code based on the error message.
+    Uses the LLM to fix the broken code based on the error message.
     """
-    global model
-    if model is None:
-        # We need to initialize it if it's not already. 
-        # But usually it is initialized by process_command. 
-        # If not, we can't do much without tools list, but for generation we don't need tools.
-        model = genai.GenerativeModel('gemini-2.0-flash', system_instruction=SYSTEM_INSTRUCTION)
-
     prompt = f"""
     The following Python script failed to execute:
     ```python
     {original_code}
     ```
-    
     Error Message:
     {error_message}
     
-    Task: Rewrite the script to fix the error. 
-    Return ONLY the corrected Python code in a code block. 
-    Do not explain. Just provide the code.
+    Task: Rewrite the script to fix the error.
+    Return ONLY the corrected Python code in a code block.
     """
     
+    # We use the text model for code fixing
     try:
-        response = await asyncio.to_thread(model.generate_content, prompt)
-        
-        # Extract code from response
-        text = response.text
-        if "```python" in text:
-            code = text.split("```python")[1].split("```")[0].strip()
-        elif "```" in text:
-            code = text.split("```")[1].strip()
+        if AI_PROVIDER == "groq":
+             messages = [
+                 {"role": "system", "content": SYSTEM_INSTRUCTION},
+                 {"role": "user", "content": prompt}
+             ]
+             completion = await _get_groq_response(messages)
+             response_text = completion.choices[0].message.content
         else:
-            code = text.strip()
-            
-        return code
+             response = await asyncio.to_thread(model.generate_content, prompt)
+             response_text = response.text
+             
+        # Extract code block
+        import re
+        match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
+        if match:
+            return match.group(1)
+        return response_text # Fallback
+        
     except Exception as e:
-        logging.error(f"Failed to fix code with AI: {e}")
+        logging.error(f"Fix Code Failed: {e}")
         return None
+
+async def analyze_error_with_screenshot(error_log: str, screenshot_path: str):
+    """
+    Analyzes an error using both the text log and a screenshot of the screen.
+    Useful for catching UI blocking errors, dialogs, or visual context.
+    """
+    prompt = f"""
+    A Python script executed by the user failed.
+    
+    Error Log:
+    {error_log}
+    
+    Attached is a screenshot of the screen at the time of failure.
+    
+    Task:
+    1. Look for any error dialogs, popups, or visual cues in the screenshot that might explain the failure (e.g., "File not found" dialog, "Permission denied", or application in weird state).
+    2. Combine visual info with the Error Log.
+    3. Explain "What went wrong?" in simple, spoken English (2-3 sentences max).
+    4. Suggest a fix.
+    """
+    
+    return await analyze_image(screenshot_path, prompt)
 
 async def analyze_image(image_path: str, prompt: str):
     """Analyzes an image using Gemini 2.0 Flash Vision capabilities."""
@@ -270,6 +325,54 @@ async def process_command(user_input, tools_map, screenshot_path=None):
     initialize_model(tools_list)
     
     if AI_PROVIDER == "groq":
+        # Ensure history is initialized
+        if not groq_history:
+             groq_history = [{"role": "system", "content": SYSTEM_INSTRUCTION}]
+
+        # Sliding Window for History: Keep System (0) + Last 4 Messages (Aggressive truncation for Rate Limits)
+        # We rebuild the history to ensure content length is manageable
+        
+        system_msg = groq_history[0]
+        recent_history = groq_history[1:]
+        
+        if len(recent_history) > 4:
+            recent_history = recent_history[-4:]
+            
+        final_history = [system_msg]
+        
+        for msg in recent_history:
+            # Extract fields safely from dict or object
+            content = None
+            role = "user"
+            tool_calls = None
+            tool_call_id = None
+            
+            if isinstance(msg, dict):
+                content = msg.get("content")
+                role = msg.get("role")
+                tool_calls = msg.get("tool_calls")
+                tool_call_id = msg.get("tool_call_id")
+            else:
+                content = getattr(msg, "content", None)
+                role = getattr(msg, "role", "user")
+                tool_calls = getattr(msg, "tool_calls", None)
+                tool_call_id = getattr(msg, "tool_call_id", None)
+            
+            # Truncate content if it's text (limit to 2000 chars)
+            if content and isinstance(content, str) and len(content) > 2000:
+                content = content[:2000] + "... [Truncated]"
+            
+            # Reconstruct as dict
+            new_msg = {"role": role, "content": content}
+            if tool_calls:
+                new_msg["tool_calls"] = tool_calls
+            if tool_call_id:
+                new_msg["tool_call_id"] = tool_call_id
+                
+            final_history.append(new_msg)
+            
+        groq_history = final_history
+
         user_msg = {"role": "user", "content": user_input}
         if screenshot_path and os.path.exists(screenshot_path):
             user_msg["content"] += "\n[Note: User attached a screenshot, but Groq text models cannot see it. Ask for text description if needed.]"
@@ -445,6 +548,11 @@ async def generate_workflow_script(events):
                 
                 log += f"- Wait {delay:.2f}s, then Click at ({event['x']}, {event['y']}) with {event['button']}\n"
                 
+                # Include Element Info for robustness
+                if 'element_info' in event and isinstance(event['element_info'], dict):
+                    ei = event['element_info']
+                    log += f"  (Target: '{ei.get('title', 'Unknown')}', Type: {ei.get('control_type', 'Unknown')}, ID: {ei.get('auto_id', '')})\n"
+                
                 # Add image if available (limit to first 10 to save bandwidth/tokens for now)
                 if 'screenshot' in event and os.path.exists(event['screenshot']) and len(images) < 10:
                     img = Image.open(event['screenshot'])
@@ -474,8 +582,12 @@ async def generate_workflow_script(events):
         
         Task:
         1. Analyze the log and images to understand the workflow.
-        2. Generate a robust Python script using 'pyautogui' and 'pywinauto' to replicate this workflow.
-        3. Use 'time.sleep()' to respect the delays (or slightly faster).
+        2. Generate a ROBUST Python script.
+           - DO NOT just use 'pyautogui.click(x, y)'. That is fragile.
+           - Use 'pywinauto' or 'uiautomation' where possible to find elements by Name/ID.
+           - Use the 'element_info' from the log to find windows/buttons robustly.
+           - ONLY fall back to coordinates if element info is missing or generic.
+        3. Add 'time.sleep()' to respect the delays (but make it 1.5x faster).
         4. Add comments explaining each step.
         5. Return ONLY the Python code in a code block.
         """

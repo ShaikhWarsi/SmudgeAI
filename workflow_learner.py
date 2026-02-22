@@ -9,7 +9,8 @@ import ai_engine
 import shutil
 from datetime import datetime
 from PyQt5.QtCore import QObject, pyqtSignal
-from pywinauto import Desktop
+# from pywinauto import Desktop
+
 
 class WorkflowLearner(QObject):
     finished_signal = pyqtSignal(str)
@@ -18,7 +19,7 @@ class WorkflowLearner(QObject):
         super().__init__()
         self.recording = False
         self.events = []
-        self.screenshot_dir = "workflow_data"
+        self.screenshot_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "workflow_data")
         self.mouse_listener = None
         self.keyboard_listener = None
         self.start_time = 0
@@ -71,6 +72,7 @@ class WorkflowLearner(QObject):
         
         # Get UI Element info using pywinauto (UIA)
         try:
+            from pywinauto import Desktop
             # We try UIA first as it gives better info for modern apps
             elem = Desktop(backend="uia").from_point(x, y)
             element_info = {

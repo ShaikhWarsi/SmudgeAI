@@ -1,12 +1,8 @@
-import time
 import threading
-import pyautogui
+import time
+import psutil
 import pygetwindow as gw
-import logging
-import os
-import asyncio
 from PyQt5.QtCore import QObject, pyqtSignal
-import ai_engine
 
 class Monitor(QObject):
     alert_signal = pyqtSignal(str)
@@ -14,83 +10,55 @@ class Monitor(QObject):
     def __init__(self):
         super().__init__()
         self.running = False
-        self.last_mouse_pos = pyautogui.position()
-        self.last_activity_time = time.time()
-        self.check_interval = 5 # seconds
-        self.idle_threshold = 60 # seconds
-        self.target_apps = ["Visual Studio Code", "Cursor", "PyCharm", "Sublime Text", "Command Prompt", "PowerShell"]
+        self.thread = None
 
     def start(self):
-        if self.running:
-            return
-        self.running = True
-        threading.Thread(target=self._loop, daemon=True).start()
+        if not self.running:
+            self.running = True
+            self.thread = threading.Thread(target=self._monitor_loop, daemon=True)
+            self.thread.start()
 
     def stop(self):
         self.running = False
+        if self.thread:
+            self.thread.join(timeout=1)
 
-    def _loop(self):
-        logging.info("Active Monitoring Started")
+    def _monitor_loop(self):
         while self.running:
             try:
-                self._check_activity()
-            except Exception as e:
-                logging.error(f"Monitor loop error: {e}")
-            time.sleep(self.check_interval)
+                # 1. Check System Health
+                # interval=0.5 to be responsive but not hog CPU
+                cpu = psutil.cpu_percent(interval=0.5) 
+                ram = psutil.virtual_memory().percent
+                
+                if cpu > 95:
+                    self.alert_signal.emit(f"CPU Critical: {cpu}%")
+                    time.sleep(5) # Cooldown
+                elif ram > 95:
+                    self.alert_signal.emit(f"RAM Critical: {ram}%")
+                    time.sleep(5)
 
-    def _check_activity(self):
-        # 1. Check Idle
-        current_pos = pyautogui.position()
-        if current_pos != self.last_mouse_pos:
-            self.last_mouse_pos = current_pos
-            self.last_activity_time = time.time()
-            return # User is active
-
-        idle_time = time.time() - self.last_activity_time
-        if idle_time < self.idle_threshold:
-            return # Not idle long enough
-
-        # 2. Check Active Window
-        try:
-            active_window = gw.getActiveWindow()
-            if not active_window:
-                return
-            
-            is_target = any(app in active_window.title for app in self.target_apps)
-            if not is_target:
-                return
-        except Exception:
-            return
-
-        # 3. Take Screenshot and Analyze
-        logging.info(f"User idle in {active_window.title} for {idle_time:.1f}s. Analyzing screen...")
-        
-        screenshot_path = "monitor_screenshot.png"
-        pyautogui.screenshot(screenshot_path)
-        
-        prompt = """
-        Analyze this screenshot of a code editor or terminal.
-        Is there a VISIBLE error message, stack trace, or red squiggle indicating a bug that the user might be stuck on?
-        If YES, return a short, friendly, helpful message starting with 'I see you're stuck on...'. 
-        If NO, return 'NO'.
-        """
-        
-        # Run async analysis
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(ai_engine.analyze_image(screenshot_path, prompt))
-            loop.close()
-            
-            if result and "NO" not in result and "Error" not in result:
-                self.alert_signal.emit(result)
-                # Reset activity time to avoid spamming the same error
-                self.last_activity_time = time.time() 
-        except Exception as e:
-            logging.error(f"Analysis failed: {e}")
-        finally:
-            if os.path.exists(screenshot_path):
+                # 2. Check for Error Windows
                 try:
-                    os.remove(screenshot_path)
-                except:
-                    pass
+                    windows = gw.getAllTitles()
+                    for title in windows:
+                        if not title: continue
+                        title_lower = title.lower()
+                        
+                        # Keywords that indicate a problem
+                        error_keywords = ["error", "exception", "fatal", "crash", "not responding"]
+                        
+                        if any(k in title_lower for k in error_keywords):
+                            # Filter out false positives (e.g., IDEs, Browser tabs with 'error' in title)
+                            if any(fp in title_lower for fp in ["visual studio code", "chrome", "edge", "firefox", "search"]):
+                                continue
+                                
+                            self.alert_signal.emit(f"I see an error: '{title}'. Want me to fix it?")
+                            time.sleep(10) # Don't spam alerts for the same window
+                except Exception as e:
+                    pass # Window enumeration might fail temporarily
+
+                time.sleep(2)
+            except Exception as e:
+                print(f"Monitor Error: {e}")
+                time.sleep(5)

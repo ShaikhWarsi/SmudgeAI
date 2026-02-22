@@ -6,10 +6,12 @@ import logging
 import webbrowser
 import shutil
 import pyautogui
+from PIL import Image
 from datetime import datetime
 import time
 import ai_engine
 import pygetwindow as gw
+# from pywinauto import Desktop  <-- Moved to function scope to avoid COM conflicts
 from googlesearch import search
 import requests
 from bs4 import BeautifulSoup
@@ -18,17 +20,102 @@ import json
 import config
 import ctypes
 import web_automation
+import pyperclip
+import pythoncom
 
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Global callback for status updates (to be set by GUI)
 status_callback = None
+permission_callback = None
+tool_execution_callback = None
 stop_execution_flag = False
+
+COMMAND_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "command_cache.json")
+COMMAND_CACHE = {}
+CACHE_EXPIRY_HOURS = 24
+CACHE_MAX_SIZE = 50
+
+def load_command_cache():
+    global COMMAND_CACHE
+    if os.path.exists(COMMAND_CACHE_FILE):
+        try:
+            with open(COMMAND_CACHE_FILE, 'r') as f:
+                data = json.load(f)
+                
+            # Filter expired entries and enforce size limit
+            current_time = time.time()
+            valid_cache = {}
+            
+            # Sort by timestamp (oldest first) if available, otherwise just process
+            # We need to handle legacy cache format (without timestamp)
+            sorted_items = []
+            for k, v in data.items():
+                if isinstance(v, dict) and "timestamp" in v:
+                    sorted_items.append((k, v))
+                else:
+                    # Treat legacy items as new or discard? Let's keep them with current time
+                    v["timestamp"] = current_time
+                    sorted_items.append((k, v))
+            
+            # Sort by timestamp
+            sorted_items.sort(key=lambda x: x[1]["timestamp"])
+            
+            # Keep only recent valid ones
+            for k, v in sorted_items:
+                if (current_time - v["timestamp"]) < (CACHE_EXPIRY_HOURS * 3600):
+                    valid_cache[k] = v
+            
+            # Enforce Max Size (keep newest)
+            if len(valid_cache) > CACHE_MAX_SIZE:
+                # Convert back to list to slice
+                items = list(valid_cache.items())
+                # Keep last N
+                valid_cache = dict(items[-CACHE_MAX_SIZE:])
+                
+            COMMAND_CACHE = valid_cache
+        except Exception as e:
+            logging.error(f"Failed to load command cache: {e}")
+            COMMAND_CACHE = {}
+
+def save_command_cache():
+    try:
+        with open(COMMAND_CACHE_FILE, 'w') as f:
+            json.dump(COMMAND_CACHE, f, indent=2)
+    except Exception as e:
+        logging.error(f"Failed to save command cache: {e}")
+
+load_command_cache()
 
 def set_status_callback(callback):
     """Sets the callback function for status updates."""
     global status_callback
     status_callback = callback
+
+def set_permission_callback(callback):
+    """Sets the callback function for user permission requests."""
+    global permission_callback
+    permission_callback = callback
+
+def set_tool_execution_callback(callback):
+    """Sets the callback for logging tool executions (Thought Bubble)."""
+    global tool_execution_callback
+    tool_execution_callback = callback
+
+def log_tool_execution(tool_name, args):
+    """Logs the tool execution to the GUI."""
+    if tool_execution_callback:
+        tool_execution_callback(tool_name, args)
+
+def ask_user_permission(action_description: str) -> bool:
+    """Asks the user for permission to execute a sensitive action."""
+    if permission_callback:
+        return permission_callback(action_description)
+    
+    # Fallback to console input (or safe mode default deny)
+    # In a real headless mode, this might log and return False
+    print(f"⚠️ Safe Mode Permission Request: {action_description}")
+    return False 
 
 def stop_execution():
     """Signals the task manager to stop current execution."""
@@ -44,7 +131,7 @@ def update_status(message: str):
 task_queue = []
 task_history = []
 
-WORKSPACE_DIR = os.path.join(os.getcwd(), "workspace")
+WORKSPACE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "workspace")
 if not os.path.exists(WORKSPACE_DIR):
     os.makedirs(WORKSPACE_DIR)
 
@@ -74,9 +161,7 @@ def open_application(app_name: str):
     """
     # Safe Mode Check
     if config.SAFE_MODE:
-        # 1 = OK/Cancel. Return 1 (IDOK) or 2 (IDCANCEL)
-        resp = ctypes.windll.user32.MessageBoxW(0, f"Allow Jarvis to open '{app_name}'?", "Safe Mode Confirmation", 1 | 0x40000) # MB_OKCANCEL | MB_TOPMOST
-        if resp == 2:
+        if not ask_user_permission(f"Open application '{app_name}'?"):
             return f"Action blocked by user in Safe Mode: Open {app_name}"
 
     # 1. Try shutil.which (PATH)
@@ -114,6 +199,140 @@ def open_application(app_name: str):
             return f"Error opening {app_name}: {e}"
     else:
         return f"Application {app_name} not found. Try installing it or adding it to PATH."
+
+def click_element_by_name(name: str):
+    """
+    Clicks a UI element (Button, MenuItem, etc.) by its visible text using Accessibility APIs.
+    More robust than coordinate-based clicks.
+    
+    Args:
+        name: The text/title of the element to click.
+    """
+    try:
+        # Try to find element in active window first
+        # We catch potential errors if no window is active or UIA fails
+        try:
+            from pywinauto import Desktop
+            app = Desktop(backend="uia")
+            # Get the top window. 'active_only=True' in recent pywinauto versions might need specific handling
+            # window() without args gets the top window
+            active_window = app.window(active_only=True)
+            if not active_window.exists():
+                 return "No active window found."
+        except Exception as e:
+            return f"Error connecting to active window: {e}"
+
+        # Search for element with matching title
+        # We try control_type="Button" first as most common
+        try:
+             # Using exact match for now
+             btn = active_window.child_window(title=name, control_type="Button").wrapper_object()
+             btn.click_input()
+             return f"Clicked button '{name}'."
+        except:
+             # Try generic element
+             try:
+                 elem = active_window.child_window(title=name).wrapper_object()
+                 elem.click_input()
+                 return f"Clicked element '{name}'."
+             except Exception as e:
+                 return f"Element '{name}' not found in active window. Ensure the name is exact."
+
+    except Exception as e:
+        return f"Error using UI Automation: {e}"
+
+def read_screen_text():
+    """
+    Returns a structured list of visible text elements in the active window using UI Automation.
+    """
+    try:
+        from pywinauto import Desktop
+        app = Desktop(backend="uia")
+        active_window = app.window(active_only=True)
+        
+        if not active_window.exists():
+             return "No active window found."
+             
+        # Dump the tree - simplified
+        # We iterate over immediate children to avoid huge dumps
+        children = active_window.children()
+        texts = []
+        for child in children:
+             txt = child.window_text()
+             if txt:
+                 # Try to get more specific if it's a container
+                 # But keep it simple for now
+                 texts.append(f"[{child.element_type}]: {txt}")
+                 
+        if not texts:
+            return "No readable text found in active window."
+            
+        return "\n".join(texts)
+    except Exception as e:
+        return f"Error reading screen text: {e}"
+
+def organize_files_by_date(directory_path: str):
+    """
+    Organizes files in a directory into folders by creation date (YYYY-MM-DD).
+    Example: 'C:\\MyDocs\\2023-10-27\\report.pdf'
+    """
+    try:
+        if not os.path.exists(directory_path):
+            return f"Error: Directory {directory_path} not found."
+            
+        files_moved = 0
+        for filename in os.listdir(directory_path):
+            file_path = os.path.join(directory_path, filename)
+            
+            # Skip if it's a directory
+            if not os.path.isfile(file_path):
+                continue
+                
+            # Get creation time
+            creation_time = os.path.getctime(file_path)
+            date_folder_name = datetime.fromtimestamp(creation_time).strftime('%Y-%m-%d')
+            target_folder = os.path.join(directory_path, date_folder_name)
+            
+            # Create date folder if not exists
+            os.makedirs(target_folder, exist_ok=True)
+            
+            # Move file
+            shutil.move(file_path, os.path.join(target_folder, filename))
+            files_moved += 1
+            
+        return f"Successfully organized {files_moved} files in {directory_path} by date."
+    except Exception as e:
+        return f"Error organizing files: {e}"
+
+def resize_image(image_path: str, width: int, height: int):
+    """
+    Resizes an image to the specified dimensions using PIL.
+    """
+    try:
+        if not os.path.exists(image_path):
+             return f"Error: Image {image_path} not found."
+             
+        with Image.open(image_path) as img:
+            resized_img = img.resize((width, height))
+            resized_img.save(image_path)
+            
+        return f"Resized {image_path} to {width}x{height}."
+    except Exception as e:
+        return f"Error resizing image: {e}"
+
+def get_wifi_networks():
+    """
+    Lists available WiFi networks using netsh.
+    """
+    try:
+        # Use netsh on Windows
+        result = subprocess.run(["netsh", "wlan", "show", "networks"], capture_output=True, text=True)
+        if result.returncode != 0:
+             return f"Error running netsh: {result.stderr}"
+             
+        return result.stdout
+    except Exception as e:
+        return f"Error getting WiFi networks: {e}"
 
 def get_active_window_title():
     """Gets the title of the currently active window."""
@@ -215,10 +434,7 @@ def deep_search(query: str):
 def click_at_coordinates(x: int, y: int, button: str = "left"):
     """Clicks at the specified screen coordinates."""
     if config.SAFE_MODE:
-        # Minimal blocking for UI, maybe just a quick confirmation or log
-        # For a hackathon, explicit is better.
-        resp = ctypes.windll.user32.MessageBoxW(0, f"Allow Jarvis to CLICK at ({x}, {y})?", "Safe Mode UI Interaction", 1 | 0x40000)
-        if resp == 2:
+        if not ask_user_permission(f"Click at ({x}, {y})?"):
             return f"Action blocked by user: Click at ({x}, {y})"
 
     try:
@@ -231,8 +447,7 @@ def type_text(text: str):
     """Types text at the current cursor position."""
     if config.SAFE_MODE:
         short_text = (text[:20] + '...') if len(text) > 20 else text
-        resp = ctypes.windll.user32.MessageBoxW(0, f"Allow Jarvis to TYPE:\n'{short_text}'?", "Safe Mode UI Interaction", 1 | 0x40000)
-        if resp == 2:
+        if not ask_user_permission(f"Type text: '{short_text}'?"):
             return f"Action blocked by user: Type text"
 
     try:
@@ -244,8 +459,7 @@ def type_text(text: str):
 def press_key(key: str):
     """Presses a specific key (e.g., 'enter', 'esc', 'win')."""
     if config.SAFE_MODE:
-        resp = ctypes.windll.user32.MessageBoxW(0, f"Allow Jarvis to PRESS KEY: {key}?", "Safe Mode UI Interaction", 1 | 0x40000)
-        if resp == 2:
+        if not ask_user_permission(f"Press key: {key}?"):
             return f"Action blocked by user: Press key {key}"
 
     try:
@@ -286,6 +500,7 @@ def open_website(url: str):
         return f"Error opening website: {e}"
 
 import pyperclip
+import pythoncom
 
 def read_clipboard():
     """Reads the current text content from the clipboard.
@@ -294,8 +509,13 @@ def read_clipboard():
         The text currently stored in the clipboard.
     """
     try:
-        content = pyperclip.paste()
-        return f"Clipboard content: {content}"
+        # Clipboard access on worker threads requires COM initialization
+        pythoncom.CoInitialize()
+        try:
+            content = pyperclip.paste()
+            return f"Clipboard content: {content}"
+        finally:
+            pythoncom.CoUninitialize()
     except Exception as e:
         return f"Error reading clipboard: {e}"
 
@@ -306,8 +526,13 @@ def write_to_clipboard(text: str):
         text: The text to copy to the clipboard.
     """
     try:
-        pyperclip.copy(text)
-        return "Text copied to clipboard."
+        # Clipboard access on worker threads requires COM initialization
+        pythoncom.CoInitialize()
+        try:
+            pyperclip.copy(text)
+            return "Text copied to clipboard."
+        finally:
+            pythoncom.CoUninitialize()
     except Exception as e:
         return f"Error writing to clipboard: {e}"
 
@@ -321,8 +546,7 @@ async def run_python_script(script_path: str):
     """
     # Safe Mode Check
     if config.SAFE_MODE:
-        resp = ctypes.windll.user32.MessageBoxW(0, f"Allow Jarvis to EXECUTE script:\n{script_path}?", "Safe Mode Confirmation", 1 | 0x40000)
-        if resp == 2:
+        if not ask_user_permission(f"Execute Python script:\n{script_path}?"):
             return f"Action blocked by user: Run {script_path}"
 
     try:
@@ -402,6 +626,20 @@ async def run_python_script(script_path: str):
                 # General Error -> Ask AI to fix
                 logging.info("Requesting AI fix for script error...")
                 
+                # Context-Aware Error Handling: Screenshot + Visual Analysis
+                try:
+                    screenshot_path = os.path.join(os.getcwd(), "error_context.png")
+                    pyautogui.screenshot(screenshot_path)
+                    
+                    update_status("📸 Analyzing Screen Context...")
+                    error_explanation = await ai_engine.analyze_error_with_screenshot(error, screenshot_path)
+                    
+                    if error_explanation:
+                        speak(f"I see an error. {error_explanation}")
+                        output_log += f"\n[Visual Analysis]: {error_explanation}\n"
+                except Exception as viz_e:
+                    logging.error(f"Visual Error Analysis Failed: {viz_e}")
+
                 update_status(f"🟡 Analyzing Traceback & Patching Code...")
                 speak(f"Script error detected on attempt {attempt+1}. requesting AI fix...")
                 try:
@@ -440,8 +678,7 @@ def install_python_library(library_name: str):
         library_name: The name of the library to install (e.g., 'numpy', 'pandas').
     """
     if config.SAFE_MODE:
-        resp = ctypes.windll.user32.MessageBoxW(0, f"Allow Jarvis to INSTALL library:\n{library_name}?", "Safe Mode Confirmation", 1 | 0x40000)
-        if resp == 2:
+        if not ask_user_permission(f"Install library: {library_name}?"):
             return f"Action blocked by user: Install {library_name}"
 
     try:
@@ -474,8 +711,7 @@ def create_file(file_path: str, content: str = ""):
     # Safe Mode Check
     if config.SAFE_MODE:
         short_content = (content[:50] + '...') if len(content) > 50 else content
-        resp = ctypes.windll.user32.MessageBoxW(0, f"Allow Jarvis to CREATE file:\n{file_path}\nContent: {short_content}", "Safe Mode Confirmation", 1 | 0x40000)
-        if resp == 2:
+        if not ask_user_permission(f"Create file:\n{file_path}\nContent: {short_content}?"):
             return f"Action blocked by user: Create {file_path}"
 
     try:
@@ -524,8 +760,7 @@ def delete_file(file_path: str):
     """
     # Safe Mode Check
     if config.SAFE_MODE:
-        resp = ctypes.windll.user32.MessageBoxW(0, f"Allow Jarvis to DELETE file:\n{file_path}?", "Safe Mode Warning", 1 | 0x30 | 0x40000) # MB_OKCANCEL | MB_ICONWARNING
-        if resp == 2:
+        if not ask_user_permission(f"DELETE file:\n{file_path}?"):
             return f"Action blocked by user: Delete {file_path}"
 
     try:
@@ -537,8 +772,7 @@ def delete_file(file_path: str):
 def shutdown_system():
     """Shuts down the computer immediately."""
     if config.SAFE_MODE:
-        resp = ctypes.windll.user32.MessageBoxW(0, "Allow Jarvis to SHUTDOWN the system?", "Safe Mode Warning", 1 | 0x30 | 0x40000)
-        if resp == 2:
+        if not ask_user_permission("SHUTDOWN the system?"):
             return "Action blocked by user: Shutdown System"
 
     try:
@@ -550,8 +784,7 @@ def shutdown_system():
 def restart_system():
     """Restarts the computer immediately."""
     if config.SAFE_MODE:
-        resp = ctypes.windll.user32.MessageBoxW(0, "Allow Jarvis to RESTART the system?", "Safe Mode Warning", 1 | 0x30 | 0x40000)
-        if resp == 2:
+        if not ask_user_permission("RESTART the system?"):
             return "Action blocked by user: Restart System"
 
     try:
@@ -598,19 +831,48 @@ def vision_click(element_description: str):
     except Exception as e:
         return f"Error in vision_click: {e}"
 
+def add_grid_to_image(image_path: str, grid_size: int = 100):
+    """Adds a labeled grid to the image for easier coordinate identification."""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        img = Image.open(image_path)
+        draw = ImageDraw.Draw(img)
+        width, height = img.size
+        
+        # Draw vertical lines
+        for x in range(0, width, grid_size):
+            draw.line([(x, 0), (x, height)], fill="red", width=1)
+            draw.text((x + 2, 2), str(x), fill="red")
+            
+        # Draw horizontal lines
+        for y in range(0, height, grid_size):
+            draw.line([(0, y), (width, y)], fill="red", width=1)
+            draw.text((2, y + 2), str(y), fill="red")
+            
+        grid_path = image_path.replace(".png", "_grid.png")
+        img.save(grid_path)
+        return grid_path
+    except Exception as e:
+        logging.error(f"Error adding grid: {e}")
+        return image_path
+
 async def vision_click_async(element_description: str):
     """Uses AI Vision to find and click an element on the screen (Async)."""
     update_status(f"👁️ Looking for '{element_description}'...")
     try:
         screenshot_path = take_screenshot()
         
+        # Add grid for better accuracy
+        grid_path = add_grid_to_image(screenshot_path)
+        
         prompt = f"""
         Find the center coordinates of the '{element_description}' in this image.
+        The image has a grid overlay to help you.
         Return ONLY a JSON object: {{"x": 123, "y": 456}}
         """
         
         # Call AI Engine
-        response_text = await ai_engine.analyze_image(screenshot_path, prompt)
+        response_text = await ai_engine.analyze_image(grid_path, prompt)
         
         # Parse JSON
         import re
@@ -732,8 +994,7 @@ def send_email(recipient: str, subject: str, body: str):
         body: The body content of the email.
     """
     if config.SAFE_MODE:
-        resp = ctypes.windll.user32.MessageBoxW(0, f"Allow Jarvis to SEND EMAIL to:\n{recipient}\nSubject: {subject}?", "Safe Mode Confirmation", 1 | 0x40000)
-        if resp == 2:
+        if not ask_user_permission(f"SEND EMAIL to:\n{recipient}\nSubject: {subject}?"):
             return f"Action blocked by user: Send Email to {recipient}"
 
     try:
@@ -749,8 +1010,82 @@ def send_email(recipient: str, subject: str, body: str):
     except Exception as e:
         return f"Error sending email: {e}"
 
+async def computer_use_fallback(instruction: str):
+    """
+    Universal Computer Use Fallback.
+    Use this tool when NO other specific tool matches the user's request.
+    It takes a screenshot, analyzes the UI, and performs the click/type action described.
+    
+    Args:
+        instruction: A clear description of what to click or type (e.g., "Click the red 'Subscribe' button", "Type 'Hello' in the search bar").
+    """
+    logging.info(f"Fallback Computer Use: {instruction}")
+    update_status(f"👁️ Visual Agent: {instruction}")
+    
+    try:
+        # 1. Take Screenshot
+        screenshot_path = take_screenshot()
+        
+        # 2. Add Grid for Precision
+        grid_path = add_grid_to_image(screenshot_path, grid_size=100)
+        
+        # 3. Ask Vision Model for Coordinates
+        # We use a direct prompt to ai_engine for this specific visual task
+        prompt = f"""
+        I need to perform this action on the screen: "{instruction}"
+        
+        Attached is a screenshot with a red coordinate grid.
+        
+        Task:
+        1. Locate the UI element that matches the instruction.
+        2. Estimate its center X, Y coordinates based on the grid numbers.
+        3. Return a JSON object: {{"x": 123, "y": 456, "reason": "Found 'Subscribe' button at grid 100,400"}}
+        
+        If the element is not visible, return {{"error": "Element not found"}}
+        """
+        
+        response_text = await ai_engine.analyze_image(grid_path, prompt)
+        
+        # 4. Parse Coordinates
+        import json
+        import re
+        
+        # Extract JSON from response
+        match = re.search(r"\{.*\}", response_text, re.DOTALL)
+        if match:
+            data = json.loads(match.group(0))
+            if "error" in data:
+                return f"Visual Agent failed: {data['error']}"
+                
+            x, y = data.get("x"), data.get("y")
+            reason = data.get("reason", "")
+            
+            speak(f"I found it. {reason}")
+            
+            # 5. Perform Action
+            # If instruction implies typing, we click then type
+            if "type" in instruction.lower() or "enter" in instruction.lower():
+                click_at_coordinates(x, y)
+                time.sleep(0.5)
+                # Extract text to type from instruction (heuristic)
+                # This is a bit naive, but works for "Type 'Hello'"
+                text_match = re.search(r"type ['\"](.+?)['\"]", instruction, re.IGNORECASE)
+                if text_match:
+                    text_to_type = text_match.group(1)
+                    type_text(text_to_type)
+                    return f"Clicked ({x},{y}) and typed: {text_to_type}"
+            
+            click_at_coordinates(x, y)
+            return f"Clicked at ({x},{y}). Reason: {reason}"
+            
+        return f"Could not determine coordinates from AI response: {response_text}"
+
+    except Exception as e:
+        return f"Computer Use Error: {e}"
+
 # Map tool names to functions
 AVAILABLE_TOOLS = {
+    "computer_use_fallback": computer_use_fallback,
     "open_application": open_application,
     "take_screenshot": take_screenshot,
     "open_website": open_website,
@@ -773,16 +1108,30 @@ AVAILABLE_TOOLS = {
     "vision_click": vision_click_async,
     "read_project_context": read_project_context,
     "browse_web": web_automation.browse_web,
-    "web_click": web_automation.web_click,
-    "web_type": web_automation.web_type,
+    "get_web_elements": web_automation.get_web_elements,
+    "web_click_id": web_automation.web_click_id,
+    "web_type_id": web_automation.web_type_id,
+    "web_scroll": web_automation.web_scroll,
+    "web_press_key": web_automation.web_press_key,
     "web_read": web_automation.web_read,
-    "close_browser": web_automation.close_browser
+    "close_browser": web_automation.close_browser,
+    "click_element_by_name": click_element_by_name,
+    "read_screen_text": read_screen_text,
+    "organize_files_by_date": organize_files_by_date,
+    "resize_image": resize_image,
+    "get_wifi_networks": get_wifi_networks
 }
 
 async def generate_plan(user_input: str):
     """Uses AI to break down a complex task into steps."""
     prompt = f"""
     You are a Planner Agent. Break down this user request into a simple, sequential list of actionable steps for an AI agent.
+    
+    CRITICAL: 
+    - Keep steps granular.
+    - If the request implies "watching" or "monitoring", include a loop step or specify "Repeatedly check...".
+    - If the request is vague (e.g. "Do that thing"), assume we need to use 'computer_use_fallback' or 'vision_click'.
+    
     User Request: "{user_input}"
     
     Return ONLY a valid JSON array of strings. 
@@ -812,11 +1161,71 @@ async def generate_plan(user_input: str):
         logging.error(f"Planning failed: {e}")
         return None
 
+def get_system_context():
+    """Gathers current system state for AI context."""
+    try:
+        active_window = gw.getActiveWindow()
+        active_title = active_window.title if active_window else "Unknown"
+        
+        # Limit title length
+        all_titles = [w.title for w in gw.getAllTitles() if w.title]
+        all_titles_str = ", ".join(all_titles[:5]) # Limit to 5 for brevity
+        
+        clipboard_content = ""
+        try:
+            # Clipboard access on worker threads requires COM initialization
+            pythoncom.CoInitialize()
+            try:
+                # Use pywin32's clipboard functions for robustness
+                import win32clipboard
+                win32clipboard.OpenClipboard()
+                try:
+                    if win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_TEXT):
+                        data = win32clipboard.GetClipboardData(win32clipboard.CF_TEXT)
+                        clipboard_content = data.decode('utf-8', errors='ignore')
+                    elif win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_UNICODETEXT):
+                        clipboard_content = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT)
+                finally:
+                    win32clipboard.CloseClipboard()
+
+                if len(clipboard_content) > 50:
+                    clipboard_content = clipboard_content[:50] + "..."
+            finally:
+                pythoncom.CoUninitialize()
+        except Exception as e:
+            # logging.debug(f"Clipboard access failed: {e}")
+            pass
+            
+        return f"[System State: Active Window='{active_title}', Open Apps=[{all_titles_str}], Clipboard='{clipboard_content}']"
+    except Exception as e:
+        return f"[System Context Error: {e}]"
+
 async def _execute_step_logic(user_input: str, screenshot_path: str = None):
     """Core execution logic for a single step (extracted from execute_task)."""
     global stop_execution_flag
     
     logging.info(f"Executing step: {user_input}")
+    
+    # 0. Check Command Cache (Pre-computation)
+    cache_key = user_input.lower().strip()
+    if cache_key in COMMAND_CACHE:
+        cached = COMMAND_CACHE[cache_key]
+        tool_name = cached["tool"]
+        tool_args = cached["args"]
+        
+        update_status(f"⚡ Instant Replay: {tool_name}")
+        log_tool_execution(tool_name, tool_args)
+        
+        try:
+            func = AVAILABLE_TOOLS[tool_name]
+            if inspect.iscoroutinefunction(func):
+                res = await func(**tool_args)
+            else:
+                res = func(**tool_args)
+            return f"Executed Cached Action: {res}"
+        except Exception as e:
+            logging.warning(f"Cache failed: {e}. Falling back to AI.")
+            # Fall through to normal AI logic
     
     # Check if we need to take a screenshot for context (if not provided)
     if not screenshot_path:
@@ -829,15 +1238,22 @@ async def _execute_step_logic(user_input: str, screenshot_path: str = None):
              logging.info(f"Screenshot taken for context: {screenshot_path}")
 
     # Smart Context: Always get the active window title
-    window_title = get_active_window_title()
-    logging.info(f"Context: {window_title}")
+    context_str = get_system_context()
+    logging.info(f"Context: {context_str}")
     
     # Inject context
-    ai_input = f"User Input: {user_input}\nContext: {window_title}"
+    ai_input = f"User Input: {user_input}\nContext: {context_str}"
 
     # Process with AI - Initial Call
     response = await ai_engine.process_command(ai_input, AVAILABLE_TOOLS, screenshot_path)
     
+    # OODA: Capture pre-state
+    try:
+        pre_window = gw.getActiveWindow()
+        pre_title = pre_window.title if pre_window else "Unknown"
+    except:
+        pre_title = "Unknown"
+
     final_output = ""
     loop_count = 0
     max_loops = 5 
@@ -868,19 +1284,67 @@ async def _execute_step_logic(user_input: str, screenshot_path: str = None):
                         tool_args = {}
                      
                      logging.info(f"Groq requested tool: {tool_name} with args: {tool_args}")
+                     log_tool_execution(tool_name, tool_args)
+                     
+                     # Cache Update Logic (Simple One-Shot)
+                     if loop_count == 1:
+                        COMMAND_CACHE[user_input.lower().strip()] = {
+                            "tool": tool_name, 
+                            "args": tool_args,
+                            "timestamp": time.time()
+                        }
+                        save_command_cache()
                      
                      result_content = ""
                      if tool_name in AVAILABLE_TOOLS:
                          try:
-                            import inspect
-                            func = AVAILABLE_TOOLS[tool_name]
-                            if inspect.iscoroutinefunction(func):
-                                tool_result = await func(**tool_args)
-                            else:
-                                tool_result = func(**tool_args)
-                            result_content = str(tool_result)
+                             import inspect
+                             func = AVAILABLE_TOOLS[tool_name]
+                             if inspect.iscoroutinefunction(func):
+                                 tool_result = await func(**tool_args)
+                             else:
+                                 tool_result = func(**tool_args)
+                            
+                             # OODA Loop: Verification & Context Update
+                             try:
+                                 post_window = gw.getActiveWindow()
+                                 post_title = post_window.title if post_window else "Unknown"
+                             except:
+                                 post_title = "Unknown"
+                             
+                             verification_msg = ""
+                             if pre_title != post_title:
+                                 verification_msg = f"\n[VERIFICATION]: Active window changed from '{pre_title}' to '{post_title}'."
+                             
+                             # Visual Verification for interaction tools
+                             if tool_name in ["click_at_coordinates", "vision_click", "click_element_by_name", "type_text", "press_key", "web_click_id"]:
+                                 try:
+                                     # Verify action with a mini-screenshot
+                                     verify_shot = take_screenshot() 
+                                     verification_msg += f"\n[VERIFICATION]: Action executed. Screen captured for analysis: {os.path.basename(verify_shot)}"
+                                 except Exception as ve:
+                                     logging.warning(f"Verification screenshot failed: {ve}")
+
+                             context_update = get_system_context() + verification_msg
+                            
+                             # Self-Healing: Check for failure and hint the AI
+                             result_str = str(tool_result)
+                             result_lower = result_str.lower()
+                             if "error" in result_lower or "blocked" in result_lower or "not found" in result_lower or "failed" in result_lower:
+                                 hint = "\n[SYSTEM HINT]: The last action appears to have FAILED. "
+                                 if tool_name == "click_element_by_name":
+                                     hint += "Try 'vision_click' instead."
+                                 elif tool_name == "vision_click":
+                                     hint += "Try 'computer_use_fallback' or 'click_at_coordinates' if you can guess the location."
+                                 elif tool_name == "open_application":
+                                     hint += "Try 'run_python_script' or check the application name."
+                                 else:
+                                     hint += "Please Analyze the error and try a DIFFERENT strategy."
+                                 context_update += hint
+                            
+                             result_content = result_str + "\n" + context_update
                          except Exception as e:
-                            result_content = f"Error executing {tool_name}: {e}"
+                             result_content = f"Error executing {tool_name}: {e}"
                      else:
                          result_content = f"Tool {tool_name} not found."
                      
@@ -913,6 +1377,16 @@ async def _execute_step_logic(user_input: str, screenshot_path: str = None):
                 tool_args = dict(fc.args)
                 
                 logging.info(f"AI requested tool: {tool_name} with args: {tool_args}")
+                log_tool_execution(tool_name, tool_args)
+
+                # Cache Update Logic (Simple One-Shot)
+                if loop_count == 1:
+                   COMMAND_CACHE[user_input.lower().strip()] = {
+                       "tool": tool_name, 
+                       "args": tool_args,
+                       "timestamp": time.time()
+                   }
+                   save_command_cache()
                 
                 if tool_name in AVAILABLE_TOOLS:
                     try:
@@ -923,6 +1397,36 @@ async def _execute_step_logic(user_input: str, screenshot_path: str = None):
                         else:
                             tool_result = func(**tool_args)
                         
+                        # OODA Loop: Verification & Context Update
+                        try:
+                            post_window = gw.getActiveWindow()
+                            post_title = post_window.title if post_window else "Unknown"
+                        except:
+                            post_title = "Unknown"
+                            
+                        verification_msg = ""
+                        if pre_title != post_title:
+                            verification_msg = f"\n[VERIFICATION]: Active window changed from '{pre_title}' to '{post_title}'."
+                        
+                        context_update = get_system_context() + verification_msg
+                        
+                        # Self-Healing: Check for failure and hint the AI
+                        result_str = str(tool_result)
+                        result_lower = result_str.lower()
+                        if "error" in result_lower or "blocked" in result_lower or "not found" in result_lower or "failed" in result_lower:
+                             hint = "\n[SYSTEM HINT]: The last action appears to have FAILED. "
+                             if tool_name == "click_element_by_name":
+                                 hint += "Try 'vision_click' instead."
+                             elif tool_name == "vision_click":
+                                 hint += "Try 'computer_use_fallback' or 'click_at_coordinates' if you can guess the location."
+                             elif tool_name == "open_application":
+                                 hint += "Try 'run_python_script' or check the application name."
+                             else:
+                                 hint += "Please Analyze the error and try a DIFFERENT strategy."
+                             context_update += hint
+                        
+                        tool_result = result_str + "\n" + context_update
+
                         logging.info(f"Tool Result: {tool_result}")
                         response = await ai_engine.send_tool_result(tool_name, tool_result)
                         
@@ -931,9 +1435,22 @@ async def _execute_step_logic(user_input: str, screenshot_path: str = None):
                         logging.error(error_msg)
                         response = await ai_engine.send_tool_result(tool_name, error_msg)
                 else:
-                    error_msg = f"Tool {tool_name} not found."
-                    logging.error(error_msg)
-                    response = await ai_engine.send_tool_result(tool_name, error_msg)
+                    # Fallback Logic: If AI hallucinates a tool name, try to map it to fallback
+                    logging.warning(f"Tool '{tool_name}' not found. Attempting Universal Fallback...")
+                    fallback_instruction = f"Use tool '{tool_name}' with args {tool_args}"
+                    
+                    # Try to be smart: if args has 'text' or 'query', use that as instruction
+                    if 'text' in tool_args:
+                        fallback_instruction = tool_args['text']
+                    elif 'query' in tool_args:
+                         fallback_instruction = tool_args['query']
+                    elif 'instruction' in tool_args:
+                         fallback_instruction = tool_args['instruction']
+                         
+                    update_status(f"🔄 Unknown Tool. Using Visual Fallback...")
+                    tool_result = await computer_use_fallback(fallback_instruction)
+                    response = await ai_engine.send_tool_result(tool_name, tool_result)
+
             
             elif response.parts and response.parts[0].text:
                 final_output = response.text
@@ -955,30 +1472,43 @@ async def execute_task(user_input: str):
     
     logging.info(f"Executing task: {user_input}")
     
-    # Heuristic for complexity: keywords or length
-    is_complex = len(user_input.split()) > 15 or " and " in user_input or " then " in user_input or "after" in user_input
-    
-    if is_complex:
-        update_status("🧠 Generating Plan...")
-        plan = await generate_plan(user_input)
+    try:
+        # Heuristic for complexity: keywords or length
+        is_complex = len(user_input.split()) > 15 or " and " in user_input or " then " in user_input or "after" in user_input
         
-        if plan and len(plan) > 1:
-            update_status(f"📋 Plan: {len(plan)} Steps")
-            results = []
-            for i, step in enumerate(plan):
-                if stop_execution_flag:
-                    update_status("🛑 Plan Aborted.")
-                    return "Execution Stopped."
-                    
-                update_status(f"⚙️ Step {i+1}/{len(plan)}: {step}")
-                res = await _execute_step_logic(step)
-                results.append(f"Step {i+1}: {res}")
+        if is_complex:
+            update_status("🧠 Generating Plan...")
+            plan = await generate_plan(user_input)
             
-            final_res = "\n".join(results)
-            task_history.append(f"Plan: {user_input} -> {final_res}")
-            return final_res
+            if plan and len(plan) > 1:
+                update_status(f"📋 Plan: {len(plan)} Steps")
+                results = []
+                for i, step in enumerate(plan):
+                    if stop_execution_flag:
+                        update_status("🛑 Plan Aborted.")
+                        return "Execution Stopped."
+                        
+                    update_status(f"⚙️ Step {i+1}/{len(plan)}: {step}")
+                    res = await _execute_step_logic(step)
+                    results.append(f"Step {i+1}: {res}")
+                
+                final_res = "\n".join(results)
+                task_history.append(f"Plan: {user_input} -> {final_res}")
+                return final_res
 
-    # Fallback to single step execution
-    res = await _execute_step_logic(user_input)
-    task_history.append(f"Cmd: {user_input} -> {res}")
-    return res
+        # Fallback to single step execution
+        res = await _execute_step_logic(user_input)
+        task_history.append(f"Cmd: {user_input} -> {res}")
+        return res
+
+    except Exception as e:
+        logging.error(f"Critical Task Failure: {e}")
+        update_status("🔴 Critical Error. Analyzing...")
+        
+        # Context-Aware Error Handling: Take screenshot of the error state
+        screenshot_path = take_screenshot()
+        
+        # Ask AI to explain
+        explanation = await ai_engine.analyze_error_with_screenshot(str(e), screenshot_path)
+        
+        return f"Error: {explanation}"
