@@ -9,7 +9,7 @@ load_dotenv()
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini")
 
 # Google Gemini API Key
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "AIzaSyC07XkTDfL6Q1i3mGWfl-ENQjnWPpNrMkE")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 
 # Groq API Key
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
@@ -38,3 +38,4 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # Safety Configuration
 SAFE_MODE = True  # Default to Safe Mode (Human-in-the-Loop) for demo safety
+
