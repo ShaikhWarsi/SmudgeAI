@@ -1,126 +1,63 @@
 {
-  "search for dhruv rathee": {
-    "tool": "get_web_elements",
+  "sehore": {
+    "tool": "open_website",
+    "args": {
+      "url": "https://wttr.in/Sehore"
+    },
+    "timestamp": 1773424955.3992298
+  },
+  "take_screenshot()": {
+    "tool": "take_screenshot",
     "args": {},
-    "timestamp": 1772385625.1459742
+    "timestamp": 1773425023.6663454
+  },
+  "take a screenshot": {
+    "tool": "take_screenshot",
+    "args": null,
+    "timestamp": 1773425233.4590738
+  },
+  "save the screenshot to a file": {
+    "tool": "create_file",
+    "args": {
+      "content": "",
+      "file_path": "screenshot.png"
+    },
+    "timestamp": 1773425274.4837456
   },
   "play despacito on spotify": {
-    "tool": "open_application",
-    "args": {
-      "app_name": "spotify"
-    },
-    "timestamp": 1772385877.588165
-  },
-  "play despacito": {
-    "tool": "web_click_id",
-    "args": {
-      "element_id": 4
-    },
-    "timestamp": 1772385953.4283354
-  },
-  "open youtube": {
-    "tool": "open_website",
-    "args": {
-      "url": "https://www.youtube.com"
-    },
-    "timestamp": 1772386002.40839
-  },
-  "play any video": {
     "tool": "computer_use_fallback",
     "args": {
-      "instruction": "Play any video."
+      "instruction": "play despacito on spotify"
     },
-    "timestamp": 1772386128.8093731
+    "timestamp": 1773444445.310222
   },
-  "save it to a python file on my desktop": {
-    "tool": "run_python_script",
+  "b\u00e0 t\u1ecf b\u00e0 cha b\u1ed1 l\u00fac x\u01b0a": {
+    "tool": "computer_use_fallback",
     "args": {
-      "script_path": "C:\\Users\\User\\Desktop\\hello.py"
+      "instruction": " b\u00e0 t\u1ecf b\u00e0 cha b\u1ed1 l\u00fac x\u01b0a"
     },
-    "timestamp": 1772386249.0910003
+    "timestamp": 1773509104.953142
   },
-  "save it in a python file in my desktop": {
+  "\u0939\u093e\u0901 \u092c\u0924\u093e \u092d\u093e\u0908 \u0915\u094d\u092f\u093e \u0915\u0930 \u0926\u094b": {
+    "tool": "computer_use_fallback",
+    "args": {
+      "instruction": " \u0939\u093e\u0901 \u092c\u0924\u093e \u092d\u093e\u0908 \u0915\u094d\u092f\u093e \u0915\u0930 \u0926\u094b"
+    },
+    "timestamp": 1773509136.4047966
+  },
+  "play despacito on youtube": {
+    "tool": "open_website",
+    "args": {
+      "url": "https://www.youtube.com/results?search_query=despacito"
+    },
+    "timestamp": 1773509194.8276744
+  },
+  "write a hello world python code in c drive": {
     "tool": "create_file",
     "args": {
       "content": "print('Hello, World!')",
-      "file_path": "C:\\Users\\User\\Desktop\\hello.py"
+      "file_path": "C:/Users/Username/Documents/hello_world.py"
     },
-    "timestamp": 1772386265.835612
-  },
-  "open pewdiepie channel": {
-    "tool": "open_website",
-    "args": {
-      "url": "https://www.youtube.com/@pewdiepie"
-    },
-    "timestamp": 1772386600.7481833
-  },
-  "write a hello world program in python adn save it in desktop": {
-    "tool": "create_file",
-    "args": {
-      "content": "# hello_world.py\nprint(\"Hello, World!\")\n",
-      "file_path": "Desktop/hello_world.py"
-    },
-    "timestamp": 1772386621.8429468
-  },
-  "write a hello world program in python in desktop": {
-    "tool": "create_file",
-    "args": {
-      "content": "print('Hello, world!')",
-      "file_path": "C:\\Users\\Public\\Desktop\\hello_world.py"
-    },
-    "timestamp": 1772386889.1315794
-  },
-  "write a hello world program in my desktop": {
-    "tool": "create_file",
-    "args": {
-      "content": "print(\"Hello, World!\")",
-      "file_path": "C:\\Users\\Public\\Desktop\\hello_world.py"
-    },
-    "timestamp": 1772387892.74161
-  },
-  "delete that file now": {
-    "tool": "delete_file",
-    "args": {
-      "file_path": "C:\\Users\\Public\\Desktop\\hello_world.py"
-    },
-    "timestamp": 1772387917.2031403
-  },
-  "open amd's youtube channel": {
-    "tool": "open_website",
-    "args": {
-      "url": "https://www.youtube.com/@AMD"
-    },
-    "timestamp": 1772388825.240656
-  },
-  "write a python code for hello world in my desktop": {
-    "tool": "create_file",
-    "args": {
-      "content": "print(\"Hello, World!\")\n",
-      "file_path": "~/Desktop/hello_world.py"
-    },
-    "timestamp": 1772388635.2903621
-  },
-  "write a hello world program in python on my desktop": {
-    "tool": "create_file",
-    "args": {
-      "content": "print('Hello, World!')",
-      "file_path": "C:\\Users\\Public\\Desktop\\hello_world.py"
-    },
-    "timestamp": 1772388887.5031717
-  },
-  "write a gcd program in python on my desktop": {
-    "tool": "create_file",
-    "args": {
-      "content": "def gcd(a: int, b: int) -> int:\n    \"\"\"Return the greatest common divisor of a and b using Euclid's algorithm.\"\"\"\n    while b:\n        a, b = b, a % b\n    return abs(a)\n\nif __name__ == \"__main__\":\n    import sys\n    if len(sys.argv) == 3:\n        try:\n            x = int(sys.argv[1])\n            y = int(sys.argv[2])\n            print(f\"gcd({x}, {y}) = {gcd(x, y)}\")\n        except ValueError:\n            print(\"Please provide two integer arguments.\")\n    else:\n        print(\"Usage: python gcd.py <int1> <int2>\")\n",
-      "file_path": "C:\\Users\\Public\\Desktop\\gcd.py"
-    },
-    "timestamp": 1772388918.8289006
-  },
-  "delete the gcd program": {
-    "tool": "delete_file",
-    "args": {
-      "file_path": "C:\\Users\\Public\\Desktop\\gcd.py"
-    },
-    "timestamp": 1772388935.2119648
+    "timestamp": 1773509279.5745242
   }
 }

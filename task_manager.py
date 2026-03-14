@@ -24,6 +24,7 @@ import web_automation
 import pyperclip
 import pythoncom
 from types import SimpleNamespace
+from skill_manager import skill_manager
 
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -1245,8 +1246,16 @@ async def _execute_step_logic(user_input: str, screenshot_path: str = None):
     context_str = get_system_context()
     logging.info(f"Context: {context_str}")
     
+    # 1. Search for Relevant Skills
+    relevant_skills = skill_manager.find_relevant_skills(user_input)
+    skill_context = ""
+    if relevant_skills:
+        skill_context = skill_manager.get_skill_context(relevant_skills)
+        update_status(f"🛠️ Using Skills: {', '.join([s['metadata'].get('name', 'Unknown') for s in relevant_skills])}")
+        logging.info(f"Relevant skills found: {[s['metadata'].get('name', 'Unknown') for s in relevant_skills]}")
+
     # Inject context
-    ai_input = f"User Input: {user_input}\nContext: {context_str}"
+    ai_input = f"User Input: {user_input}\nContext: {context_str}\n{skill_context}"
 
     # Process with AI - Initial Call
     response = await ai_engine.process_command(ai_input, AVAILABLE_TOOLS, screenshot_path)

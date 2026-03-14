@@ -6,9 +6,18 @@ import pygame
 import os
 import tempfile
 import hashlib
-from faster_whisper import WhisperModel
+from config import GROQ_API_KEY, WHISPER_MODEL
+import groq
 
 # logging.basicConfig(level=logging.INFO)
+
+# Initialize Groq client for Whisper
+groq_client = None
+if GROQ_API_KEY:
+    try:
+        groq_client = groq.Groq(api_key=GROQ_API_KEY)
+    except Exception as e:
+        logging.error(f"Failed to initialize Groq client for Whisper: {e}")
 
 # Initialize Pygame Mixer Lazily
 def _ensure_mixer():
@@ -20,25 +29,6 @@ def _ensure_mixer():
 
 # Voice Configuration
 VOICE = "en-GB-RyanNeural" 
-
-# Initialize Faster Whisper (Load once)
-# Use 'tiny' or 'base' for speed on CPU. 'small' or 'medium' for accuracy.
-MODEL_SIZE = "base.en" 
-try:
-    logging.info(f"Loading Faster Whisper Model ({MODEL_SIZE})...")
-    # CRASH FIX: 'int8' quantization causes Access Violation (0xC0000005) on some Windows CPUs without VNNI.
-    # Switching to 'float32' is safer (though slower) or disabling it to use Google API fallback.
-    # For Hackathon stability, we default to Google API (whisper_model = None) if this crashes, 
-    # but since we can't catch SegFaults, we'll comment it out for safety unless requested.
-    
-    # UNCOMMENT TO TRY LOCAL WHISPER (May crash on some PCs):
-    # whisper_model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
-    # logging.info("Faster Whisper Loaded.")
-    whisper_model = None # Force fallback to Google Speech Recognition
-    logging.warning("Faster Whisper disabled for stability. Using Google Speech Recognition.")
-except Exception as e:
-    logging.error(f"Failed to load Faster Whisper: {e}")
-    whisper_model = None
 
 # TTS Cache
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tts_cache")
@@ -129,20 +119,27 @@ def listen_sync():
             except sr.WaitTimeoutError:
                 return None
         
-        logging.info("Transcribing with Faster Whisper...")
+        logging.info("Transcribing with Groq Whisper...")
         
-        # Save to temp file for Whisper (it needs a file path or similar)
-        # We can also pass raw bytes but file is safer for format
+        # Save to temp file for Whisper
         temp_wav = os.path.join(tempfile.gettempdir(), "temp_command.wav")
         with open(temp_wav, "wb") as f:
             f.write(audio.get_wav_data())
             
-        if whisper_model:
-            segments, info = whisper_model.transcribe(temp_wav, beam_size=5)
-            command = " ".join([segment.text for segment in segments]).strip().lower()
+        if groq_client:
+            try:
+                with open(temp_wav, "rb") as file:
+                    transcription = groq_client.audio.transcriptions.create(
+                        file=(temp_wav, file.read()),
+                        model=WHISPER_MODEL,
+                        response_format="text",
+                    )
+                command = transcription.strip().lower()
+            except Exception as e:
+                logging.error(f"Groq Whisper transcription failed: {e}. Falling back to Google.")
+                command = recognizer.recognize_google(audio).lower()
         else:
-            # Fallback if model failed to load
-            # logging.debug("Faster Whisper not loaded, falling back to Google.")
+            # Fallback if client failed to load
             command = recognizer.recognize_google(audio).lower()
             
         # Cleanup

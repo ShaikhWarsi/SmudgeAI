@@ -6,7 +6,7 @@ load_dotenv()
 
 # AI Provider Configuration
 # Options: "gemini", "groq"
-AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini")
+AI_PROVIDER = os.getenv("AI_PROVIDER", "groq")
 
 # Google Gemini API Key
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
@@ -14,14 +14,16 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 # Groq API Key
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
-# Groq Models (Updated for March 2026 Deprecations)
+# Groq Models (Updated per user request)
 GROQ_MODELS = [ 
-    "openai/gpt-oss-120b",
-    "llama-3.3-70b-specdec",
     "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant", 
-    "mixtral-8x7b-32768"
+    "llama-3.1-8b-instant",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b"
 ]
+
+# Whisper Model for speech-to-text (Groq API)
+WHISPER_MODEL = "whisper-large-v3"
 
 # Search API Keys (Optional)
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")

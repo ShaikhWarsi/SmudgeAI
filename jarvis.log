@@ -740,3 +740,288 @@ ERROR: No matching distribution found for python==3.10.0
 2026-02-21 20:32:57,725 - INFO - Listening...
 2026-02-21 20:33:03,830 - INFO - Listening...
 2026-02-21 20:33:05,884 - INFO - Recognizing...
+2026-03-13 23:37:05,733 - INFO - Listening...
+2026-03-13 23:37:11,466 - INFO - Listening...
+2026-03-13 23:37:11,793 - INFO - Executing task: take ss and open it
+2026-03-13 23:37:11,973 - INFO - Initialized Groq Client with models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b']
+2026-03-13 23:37:11,973 - INFO - Using Groq Model: llama-3.3-70b-versatile
+2026-03-13 23:37:12,843 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-13 23:37:12,852 - INFO - Executing step: Take a screenshot
+2026-03-13 23:37:12,979 - INFO - Screenshot taken for context: screenshot_20260313_233712.png
+2026-03-13 23:37:12,981 - INFO - Context: [System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-13 23:37:12,981 - INFO - Using Groq Model: llama-3.3-70b-versatile
+2026-03-13 23:37:13,457 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-13 23:37:13,459 - INFO - Groq requested tool: take_screenshot with args: None
+2026-03-13 23:37:13,462 - INFO - Tool Result (take_screenshot): Error executing take_screenshot: task_manager.take_screenshot() argument after ** must be a mapping, not NoneType
+2026-03-13 23:37:13,462 - INFO - Using Groq Model: llama-3.3-70b-versatile
+2026-03-13 23:37:13,968 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-13 23:37:13,968 - INFO - Groq requested tool: take_screenshot with args: None
+2026-03-13 23:37:13,970 - INFO - Tool Result (take_screenshot): Error executing take_screenshot: task_manager.take_screenshot() argument after ** must be a mapping, not NoneType
+2026-03-13 23:37:13,971 - INFO - Using Groq Model: llama-3.3-70b-versatile
+2026-03-13 23:37:14,082 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-13 23:37:14,082 - INFO - Retrying request to /openai/v1/chat/completions in 16.000000 seconds
+2026-03-13 23:37:17,196 - INFO - Listening...
+2026-03-13 23:37:22,911 - INFO - Listening...
+2026-03-13 23:37:29,015 - INFO - Listening...
+2026-03-13 23:37:30,891 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-13 23:37:30,893 - ERROR - Groq Error (llama-3.3-70b-versatile): Error code: 400 - {'error': {'message': "Failed to call a function. Please adjust your prompt. See 'failed_generation' for more details.", 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '<function=take_screenshot />'}}
+2026-03-13 23:37:31,905 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-13 23:37:32,377 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-13 23:37:32,379 - ERROR - Groq Error (llama-3.1-8b-instant): Error code: 400 - {'error': {'message': "Failed to call a function. Please adjust your prompt. See 'failed_generation' for more details.", 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '<function=computer_use_fallback>{"instruction": "Take a screenshot of the current view"}'}}
+2026-03-13 23:37:33,383 - INFO - Using Groq Model: openai/gpt-oss-120b
+2026-03-13 23:37:33,770 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-13 23:37:33,773 - INFO - Groq requested tool: take_screenshot with args: {}
+2026-03-13 23:37:33,897 - INFO - Tool Result (take_screenshot): screenshot_20260313_233733.png
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-13 23:37:33,897 - INFO - Using Groq Model: openai/gpt-oss-120b
+2026-03-13 23:37:34,504 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-13 23:37:34,506 - INFO - Groq requested tool: computer_use_fallback with args: {'instruction': 'Open the file screenshot_20260313_233733.png'}
+2026-03-13 23:37:34,507 - INFO - Fallback Computer Use: Open the file screenshot_20260313_233733.png
+2026-03-13 23:37:34,741 - INFO - Listening...
+2026-03-13 23:37:40,925 - INFO - Listening...
+2026-03-13 23:37:46,639 - INFO - Listening...
+2026-03-13 23:37:46,883 - ERROR - Vision analysis failed: 
+  No API_KEY or ADC found. Please either:
+    - Set the `GOOGLE_API_KEY` environment variable.
+    - Manually pass the key with `genai.configure(api_key=my_api_key)`.
+    - Or set up Application Default Credentials, see https://ai.google.dev/gemini-api/docs/oauth for more information.
+2026-03-13 23:37:46,883 - INFO - Tool Result (computer_use_fallback): Could not determine coordinates from AI response: Error analyzing image: 
+  No API_KEY or ADC found. Please either:
+    - Set the `GOOGLE_API_KEY` environment variable.
+    - Manually pass the key with `genai.configure(api_key=my_api_key)`.
+    - Or set up Application Default Credentials, see https://ai.google.dev/gemini-api/docs/oauth for more information.
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+[SYSTEM HINT]: The last action appears to have FAILED. Please Analyze the error and try a DIFFERENT strategy.
+2026-03-13 23:37:46,884 - INFO - Using Groq Model: openai/gpt-oss-120b
+2026-03-13 23:37:48,171 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-13 23:37:48,173 - INFO - Groq requested tool: open_application with args: {'app_name': 'explorer'}
+2026-03-13 23:37:49,659 - INFO - Tool Result (open_application): Opened explorer at C:\Windows\explorer.EXE
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-13 23:37:49,660 - INFO - Using Groq Model: openai/gpt-oss-120b
+2026-03-13 23:37:50,322 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-13 23:37:50,322 - INFO - Executing step: Save the screenshot to a file
+2026-03-13 23:37:50,398 - INFO - Screenshot taken for context: screenshot_20260313_233750.png
+2026-03-13 23:37:50,401 - INFO - Context: [System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-13 23:37:50,402 - INFO - Using Groq Model: openai/gpt-oss-120b
+2026-03-13 23:37:50,526 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-13 23:37:50,526 - ERROR - Groq Error (openai/gpt-oss-120b): Error code: 400 - {'error': {'message': 'failed to template request: failed to render tokenized output: failed to render tokens with harmony: HarmonyError: EncodingError: Message=render failed: Tools should have a name!', 'type': 'invalid_request_error'}}
+2026-03-13 23:37:51,530 - INFO - Using Groq Model: openai/gpt-oss-20b
+2026-03-13 23:37:51,634 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-13 23:37:51,634 - ERROR - Groq Error (openai/gpt-oss-20b): Error code: 400 - {'error': {'message': 'failed to template request: failed to render tokenized output: failed to render tokens with harmony: HarmonyError: EncodingError: Message=render failed: Tools should have a name!', 'type': 'invalid_request_error'}}
+2026-03-13 23:37:52,645 - INFO - Using Groq Model: llama-3.3-70b-versatile
+2026-03-13 23:37:52,720 - INFO - Listening...
+2026-03-13 23:37:52,756 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-13 23:37:52,757 - INFO - Retrying request to /openai/v1/chat/completions in 1.000000 seconds
+2026-03-13 23:37:54,482 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-13 23:37:54,483 - INFO - Groq requested tool: create_file with args: {'content': '', 'file_path': 'screenshot.png'}
+2026-03-13 23:37:58,445 - INFO - Listening...
+2026-03-13 23:38:04,161 - INFO - Listening...
+2026-03-14 04:56:58,305 - INFO - Listening...
+2026-03-14 04:57:04,045 - INFO - Listening...
+2026-03-14 04:57:09,765 - INFO - Listening...
+2026-03-14 04:57:15,486 - INFO - Listening...
+2026-03-14 04:57:21,200 - INFO - Listening...
+2026-03-14 04:57:22,694 - INFO - Executing task: play despacito on spotify
+2026-03-14 04:57:22,694 - INFO - Executing step: play despacito on spotify
+2026-03-14 04:57:22,702 - INFO - Context: [System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-14 04:57:22,702 - INFO - Relevant skills found: ['spotify-player']
+2026-03-14 04:57:22,881 - INFO - Initialized Groq Client with models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b']
+2026-03-14 04:57:22,881 - INFO - Using Groq Model: llama-3.3-70b-versatile
+2026-03-14 04:57:23,730 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-14 04:57:23,732 - ERROR - Groq Error (llama-3.3-70b-versatile): Error code: 400 - {'error': {'message': "Failed to call a function. Please adjust your prompt. See 'failed_generation' for more details.", 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '<function=computer_use_fallback {"instruction": "Open Spotify and play Despacito"} </function>'}}
+2026-03-14 04:57:24,737 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 04:57:25,298 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 04:57:25,310 - INFO - Groq requested tool: computer_use_fallback with args: {'instruction': 'play despacito on spotify'}
+2026-03-14 04:57:25,315 - INFO - Fallback Computer Use: play despacito on spotify
+2026-03-14 04:57:26,913 - INFO - Listening...
+2026-03-14 04:57:32,635 - INFO - Listening...
+2026-03-14 04:57:37,695 - ERROR - Vision analysis failed: 
+  No API_KEY or ADC found. Please either:
+    - Set the `GOOGLE_API_KEY` environment variable.
+    - Manually pass the key with `genai.configure(api_key=my_api_key)`.
+    - Or set up Application Default Credentials, see https://ai.google.dev/gemini-api/docs/oauth for more information.
+2026-03-14 04:57:37,697 - INFO - Tool Result (computer_use_fallback): Could not determine coordinates from AI response: Error analyzing image: 
+  No API_KEY or ADC found. Please either:
+    - Set the `GOOGLE_API_KEY` environment variable.
+    - Manually pass the key with `genai.configure(api_key=my_api_key)`.
+    - Or set up Application Default Credentials, see https://ai.google.dev/gemini-api/docs/oauth for more information.
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+[SYSTEM HINT]: The last action appears to have FAILED. Please Analyze the error and try a DIFFERENT strategy.
+2026-03-14 04:57:37,698 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 04:57:37,967 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 04:57:37,967 - INFO - Retrying request to /openai/v1/chat/completions in 28.000000 seconds
+2026-03-14 04:57:38,353 - INFO - Listening...
+2026-03-14 04:57:44,066 - INFO - Listening...
+2026-03-14 04:57:49,782 - INFO - Listening...
+2026-03-14 04:57:55,497 - INFO - Listening...
+2026-03-14 04:58:01,215 - INFO - Listening...
+2026-03-14 04:58:07,111 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 04:58:07,111 - INFO - Groq requested tool: install_python_library with args: {'library_name': 'spogo'}
+2026-03-14 04:58:07,380 - INFO - Listening...
+2026-03-14 04:58:13,093 - INFO - Listening...
+2026-03-14 04:58:18,805 - INFO - Listening...
+2026-03-14 04:58:24,563 - INFO - Listening...
+2026-03-14 04:58:30,286 - INFO - Listening...
+2026-03-14 04:58:30,948 - INFO - Tool Result (install_python_library): Error installing spogo:
+ERROR: Could not find a version that satisfies the requirement spogo (from versions: none)
+ERROR: No matching distribution found for spogo
+
+[notice] A new release of pip is available: 24.0 -> 26.0.1
+[notice] To update, run: python.exe -m pip install --upgrade pip
+
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+[SYSTEM HINT]: The last action appears to have FAILED. Please Analyze the error and try a DIFFERENT strategy.
+2026-03-14 04:58:30,949 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 04:58:31,504 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 04:58:31,506 - INFO - Retrying request to /openai/v1/chat/completions in 18.000000 seconds
+2026-03-14 04:58:36,011 - INFO - Listening...
+2026-03-14 04:58:41,733 - INFO - Listening...
+2026-03-14 04:58:47,447 - INFO - Listening...
+2026-03-14 04:58:50,430 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 04:58:50,430 - INFO - Groq requested tool: install_python_library with args: {'library_name': 'spogo'}
+2026-03-14 04:58:53,189 - INFO - Listening...
+2026-03-14 04:58:53,610 - INFO - Tool Result (install_python_library): Error installing spogo:
+ERROR: Could not find a version that satisfies the requirement spogo (from versions: none)
+ERROR: No matching distribution found for spogo
+
+[notice] A new release of pip is available: 24.0 -> 26.0.1
+[notice] To update, run: python.exe -m pip install --upgrade pip
+
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+[VERIFICATION]: Active window changed from 'python' to 'SKILL.md - SmudgeAI-main - Trae'.
+[SYSTEM HINT]: The last action appears to have FAILED. Please Analyze the error and try a DIFFERENT strategy.
+2026-03-14 04:58:53,610 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 04:58:53,806 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 04:58:53,806 - INFO - Retrying request to /openai/v1/chat/completions in 24.000000 seconds
+2026-03-14 04:58:58,918 - INFO - Listening...
+2026-03-14 04:59:04,651 - INFO - Listening...
+2026-03-14 04:59:10,377 - INFO - Listening...
+2026-03-14 22:54:57,726 - INFO - Listening...
+2026-03-14 22:55:01,316 - INFO - Transcribing with Groq Whisper...
+2026-03-14 22:55:02,118 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-14 22:55:02,232 - INFO - Context: [System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-14 22:55:02,432 - INFO - Initialized Groq Client with models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b']
+2026-03-14 22:55:02,432 - INFO - Using Groq Model: llama-3.3-70b-versatile
+2026-03-14 22:55:02,870 - INFO - Listening...
+2026-03-14 22:55:03,370 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-14 22:55:03,371 - ERROR - Groq Error (llama-3.3-70b-versatile): Error code: 400 - {'error': {'message': "Failed to call a function. Please adjust your prompt. See 'failed_generation' for more details.", 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '<function=deep_search{"query": "b\\u00e0 t\\u1ed1 b\\u00e0 cha b\\u1ed1 l\\u1eec c x\\u00faa"}>'}}
+2026-03-14 22:55:04,381 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 22:55:04,931 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 22:55:04,943 - INFO - Groq requested tool: read_screen_text with args: None
+2026-03-14 22:55:04,949 - INFO - Tool Result (read_screen_text): Error executing read_screen_text: task_manager.read_screen_text() argument after ** must be a mapping, not NoneType
+2026-03-14 22:55:08,579 - INFO - Listening...
+2026-03-14 22:55:10,540 - INFO - Transcribing with Groq Whisper...
+2026-03-14 22:55:11,330 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-14 22:55:11,357 - INFO - Context: [System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-14 22:55:11,358 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 22:55:11,695 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:55:11,695 - INFO - Retrying request to /openai/v1/chat/completions in 24.000000 seconds
+2026-03-14 22:55:12,028 - INFO - Listening...
+2026-03-14 22:55:17,278 - ERROR - Vision analysis failed: 
+  No API_KEY or ADC found. Please either:
+    - Set the `GOOGLE_API_KEY` environment variable.
+    - Manually pass the key with `genai.configure(api_key=my_api_key)`.
+    - Or set up Application Default Credentials, see https://ai.google.dev/gemini-api/docs/oauth for more information.
+2026-03-14 22:55:17,279 - INFO - Tool Result (computer_use_fallback): Could not determine coordinates from AI response: Error analyzing image: 
+  No API_KEY or ADC found. Please either:
+    - Set the `GOOGLE_API_KEY` environment variable.
+    - Manually pass the key with `genai.configure(api_key=my_api_key)`.
+    - Or set up Application Default Credentials, see https://ai.google.dev/gemini-api/docs/oauth for more information.
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+[SYSTEM HINT]: The last action appears to have FAILED. Please Analyze the error and try a DIFFERENT strategy.
+2026-03-14 22:55:23,621 - INFO - Executing task: play despacito on youtube
+2026-03-14 22:55:23,621 - INFO - Executing step: play despacito on youtube
+2026-03-14 22:55:23,631 - INFO - Context: [System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-14 22:55:23,632 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 22:55:23,979 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:55:23,980 - INFO - Retrying request to /openai/v1/chat/completions in 13.000000 seconds
+2026-03-14 22:55:36,400 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 22:55:36,400 - INFO - Groq requested tool: read_screen_text with args: None
+2026-03-14 22:55:36,402 - INFO - Tool Result (read_screen_text): Error executing read_screen_text: task_manager.read_screen_text() argument after ** must be a mapping, not NoneType
+2026-03-14 22:55:37,054 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:55:37,055 - INFO - Retrying request to /openai/v1/chat/completions in 46.000000 seconds
+2026-03-14 22:55:48,768 - ERROR - Vision analysis failed: 
+  No API_KEY or ADC found. Please either:
+    - Set the `GOOGLE_API_KEY` environment variable.
+    - Manually pass the key with `genai.configure(api_key=my_api_key)`.
+    - Or set up Application Default Credentials, see https://ai.google.dev/gemini-api/docs/oauth for more information.
+2026-03-14 22:55:48,770 - INFO - Tool Result (computer_use_fallback): Could not determine coordinates from AI response: Error analyzing image: 
+  No API_KEY or ADC found. Please either:
+    - Set the `GOOGLE_API_KEY` environment variable.
+    - Manually pass the key with `genai.configure(api_key=my_api_key)`.
+    - Or set up Application Default Credentials, see https://ai.google.dev/gemini-api/docs/oauth for more information.
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+[VERIFICATION]: Active window changed from 'CODER101 - File Explorer' to '.env - Notepad'.
+[SYSTEM HINT]: The last action appears to have FAILED. Please Analyze the error and try a DIFFERENT strategy.
+2026-03-14 22:55:48,770 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 22:55:49,256 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:55:49,256 - INFO - Retrying request to /openai/v1/chat/completions in 36.000000 seconds
+2026-03-14 22:56:26,772 - INFO - Listening...
+2026-03-14 22:56:33,682 - INFO - Executing task: play despacito on youtube
+2026-03-14 22:56:33,682 - INFO - Executing step: play despacito on youtube
+2026-03-14 22:56:33,690 - INFO - Context: [System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-14 22:56:33,911 - INFO - Initialized Groq Client with models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b']
+2026-03-14 22:56:33,913 - INFO - Using Groq Model: llama-3.3-70b-versatile
+2026-03-14 22:56:34,810 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 22:56:34,827 - INFO - Groq requested tool: open_website with args: {'url': 'https://www.youtube.com/results?search_query=despacito'}
+2026-03-14 22:56:34,891 - INFO - Tool Result (open_website): Opened website: https://www.youtube.com/results?search_query=despacito
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-14 22:56:34,891 - INFO - Using Groq Model: llama-3.3-70b-versatile
+2026-03-14 22:56:35,520 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-14 22:56:35,520 - ERROR - Groq Error (llama-3.3-70b-versatile): Error code: 400 - {'error': {'message': "Failed to call a function. Please adjust your prompt. See 'failed_generation' for more details.", 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '<function=web_click_id":{"element_id": 1}</function>'}}
+2026-03-14 22:56:36,532 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 22:56:37,126 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 22:56:37,127 - INFO - Groq requested tool: computer_use_fallback with args: {'instruction': "Search for 'despacito' on YouTube, play the first suggestion."}
+2026-03-14 22:56:37,127 - INFO - Fallback Computer Use: Search for 'despacito' on YouTube, play the first suggestion.
+2026-03-14 22:56:49,938 - ERROR - Vision analysis failed: 
+  No API_KEY or ADC found. Please either:
+    - Set the `GOOGLE_API_KEY` environment variable.
+    - Manually pass the key with `genai.configure(api_key=my_api_key)`.
+    - Or set up Application Default Credentials, see https://ai.google.dev/gemini-api/docs/oauth for more information.
+2026-03-14 22:56:49,940 - INFO - Tool Result (computer_use_fallback): Could not determine coordinates from AI response: Error analyzing image: 
+  No API_KEY or ADC found. Please either:
+    - Set the `GOOGLE_API_KEY` environment variable.
+    - Manually pass the key with `genai.configure(api_key=my_api_key)`.
+    - Or set up Application Default Credentials, see https://ai.google.dev/gemini-api/docs/oauth for more information.
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+[VERIFICATION]: Active window changed from 'python' to '(2) despacito - YouTube - Google Chrome'.
+[SYSTEM HINT]: The last action appears to have FAILED. Please Analyze the error and try a DIFFERENT strategy.
+2026-03-14 22:56:49,940 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 22:56:50,306 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:56:50,306 - INFO - Retrying request to /openai/v1/chat/completions in 20.000000 seconds
+2026-03-14 22:57:11,183 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 22:57:11,184 - INFO - Groq requested tool: read_screen_text with args: {}
+2026-03-14 22:57:12,214 - INFO - Tool Result (read_screen_text): No readable text found in active window.
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-14 22:57:12,214 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 22:57:12,324 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:57:12,324 - INFO - Retrying request to /openai/v1/chat/completions in 47.000000 seconds
+2026-03-14 22:57:46,200 - INFO - Executing task: write a hello world python code in c drive
+2026-03-14 22:57:46,200 - INFO - Executing step: write a hello world python code in c drive
+2026-03-14 22:57:46,206 - INFO - Context: [System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+2026-03-14 22:57:46,208 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 22:57:46,710 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:57:46,711 - INFO - Retrying request to /openai/v1/chat/completions in 12.000000 seconds
+2026-03-14 22:57:59,573 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 22:57:59,574 - INFO - Groq requested tool: create_file with args: {'content': "print('Hello, World!')", 'file_path': 'C:/Users/Username/Documents/hello_world.py'}
+2026-03-14 22:57:59,816 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:57:59,816 - INFO - Retrying request to /openai/v1/chat/completions in 47.000000 seconds
+2026-03-14 22:58:02,097 - INFO - Tool Result (create_file): Error creating file: [WinError 5] Access is denied: 'C:/Users/Username'
+[System Context Error: sequence item 0: expected str instance, builtin_function_or_method found]
+[SYSTEM HINT]: The last action appears to have FAILED. Please Analyze the error and try a DIFFERENT strategy.
+2026-03-14 22:58:02,099 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 22:58:02,213 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:58:02,214 - INFO - Retrying request to /openai/v1/chat/completions in 45.000000 seconds
+2026-03-14 22:58:47,584 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:58:47,585 - INFO - Retrying request to /openai/v1/chat/completions in 48.000000 seconds
+2026-03-14 22:58:47,613 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 22:58:47,615 - INFO - Groq requested tool: vision_click_async with args: {'element_description': 'Despacito video'}
+2026-03-14 22:58:47,616 - INFO - Tool Result (vision_click_async): Tool vision_click_async not found.
+2026-03-14 22:58:47,618 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-14 22:58:47,698 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:58:47,700 - INFO - Retrying request to /openai/v1/chat/completions in 48.000000 seconds
+2026-03-14 22:59:36,067 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-14 22:59:36,067 - INFO - Retrying request to /openai/v1/chat/completions in 48.000000 seconds
+2026-03-14 22:59:36,448 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-14 22:59:36,449 - INFO - Groq requested tool: create_file with args: {'content': "print('Hello, World!')", 'file_path': 'C:/Users/your_username/Documents/hello_world.py'}
+2026-03-14 23:00:24,408 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
