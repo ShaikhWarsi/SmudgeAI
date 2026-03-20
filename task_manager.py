@@ -41,41 +41,161 @@ COMMAND_CACHE = {}
 CACHE_EXPIRY_HOURS = 24
 CACHE_MAX_SIZE = 50
 
+DANGEROUS_PATTERNS = [
+    (r"delete", r"(file|folder|directory)", "delete_file", "Deleting files or folders"),
+    (r"remove", r"(file|folder)", "delete_file", "Removing files or folders"),
+    (r"rm\s", r"-rf|-\s*recursion\s*force", "delete_recursive", "Deleting directories recursively"),
+    (r"shutdown", r".*", "shutdown_pc", "Shutting down the computer"),
+    (r"restart", r".*", "restart_pc", "Restarting the computer"),
+    (r"format", r".*", "format_disk", "Formatting a disk"),
+    (r"drop", r"(database|table|schema)", "drop_database", "Dropping database objects"),
+    (r"truncate", r"(table|database)", "truncate_table", "Truncating table/database"),
+    (r"alter", r"(table|database|system)", "alter_system", "Altering system configuration"),
+    (r"grant", r"(privilege|access|permission)", "grant_permission", "Granting system permissions"),
+    (r"revoke", r"(privilege|access|permission)", "revoke_permission", "Revoking system permissions"),
+    (r"exec", r"(system|shell|cmd|powershell)", "execute_shell", "Executing shell commands"),
+    (r"sendkeys", r".*", "send_keys", "Sending keyboard input to system"),
+    (r"kill", r"(process|task|program)", "kill_process", "Killing processes"),
+    (r"taskkill", r".*", "taskkill", "Force killing processes"),
+    (r"net\s+user", r".*", "net_user", "Managing system users"),
+    (r"reg\s+delete", r".*", "registry_delete", "Deleting from Windows Registry"),
+    (r"reg\s+add", r".*", "registry_add", "Adding to Windows Registry"),
+]
+
+SYSTEM_DIRS = [
+    r"C:\\Windows",
+    r"C:\\Program Files",
+    r"C:\\Program Files (x86)",
+    r"C:\\System32",
+    r"C:\\Boot",
+    r"C:\\Recovery",
+]
+
+import re as _re
+
+class PermissionSystem:
+    _instance = None
+
+    def __init__(self):
+        self.permission_callback = None
+        self.dangerous_actions_log = []
+        self.auto_allow_safe = True
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def set_callback(self, callback):
+        self.permission_callback = callback
+
+    def is_dangerous(self, action: str, target: str = "") -> tuple:
+        for pattern, target_pattern, action_type, description in DANGEROUS_PATTERNS:
+            if _re.search(pattern, action, _re.IGNORECASE) and _re.search(target_pattern, target, _re.IGNORECASE):
+                return (True, action_type, description)
+        return (False, None, None)
+
+    def is_system_directory(self, path: str) -> bool:
+        path_lower = path.lower()
+        for sys_dir in SYSTEM_DIRS:
+            if path_lower.startswith(sys_dir.lower()):
+                return True
+        return False
+
+    def requires_permission(self, action: str, target: str = "", file_path: str = None) -> tuple:
+        dangerous, action_type, description = self.is_dangerous(action, target)
+        if dangerous:
+            return (True, action_type, description)
+
+        if file_path:
+            if self.is_system_directory(file_path):
+                return (True, "system_file_access", "Accessing system directories")
+            if file_path.startswith(".."):
+                return (True, "path_traversal", "Path traversal detected")
+
+        return (False, None, None)
+
+    def check_and_request(self, action: str, target: str = "", file_path: str = None) -> bool:
+        needs_perm, action_type, description = self.requires_permission(action, target, file_path)
+
+        if not needs_perm:
+            return True
+
+        if not description:
+            description = f"Action: {action}"
+
+        logging.warning(f"Dangerous action detected: {action_type} - {description}")
+
+        if self.permission_callback:
+            return self.permission_callback(description)
+        elif permission_callback:
+            return permission_callback(description)
+        else:
+            print(f"⚠️ DANGEROUS ACTION BLOCKED: {description}")
+            return False
+
+_permission_system = PermissionSystem.get_instance()
+
+def get_permission_system():
+    return _permission_system
+
+EXPECTED_CACHE_ENTRY_KEYS = {"tool", "args", "result", "timestamp"}
+SENSITIVE_CACHE_KEYS = {"password", "api_key", "secret", "token", "credential"}
+
+
+def _validate_cache_entry(entry: dict, key: str) -> bool:
+    if not isinstance(entry, dict):
+        logging.warning(f"Cache entry '{key}' is not a dictionary - skipping")
+        return False
+    for k in EXPECTED_CACHE_ENTRY_KEYS:
+        if k not in entry:
+            logging.warning(f"Cache entry '{key}' missing required key '{k}' - skipping")
+            return False
+    for k, v in entry.items():
+        if k.lower() in SENSITIVE_CACHE_KEYS and isinstance(v, str) and len(v) > 0:
+            entry[k] = "***REDACTED***"
+    if isinstance(entry.get("args"), dict):
+        for k in list(entry["args"].keys()):
+            if k.lower() in SENSITIVE_CACHE_KEYS:
+                entry["args"][k] = "***REDACTED***"
+    return True
+
+
 def load_command_cache():
     global COMMAND_CACHE
     if os.path.exists(COMMAND_CACHE_FILE):
         try:
             with open(COMMAND_CACHE_FILE, 'r') as f:
-                data = json.load(f)
-                
-            # Filter expired entries and enforce size limit
+                raw_data = f.read()
+            if not raw_data.strip().startswith('{'):
+                logging.warning("Cache file does not appear to be valid JSON - resetting cache")
+                COMMAND_CACHE = {}
+                return
+            data = json.loads(raw_data)
+            if not isinstance(data, dict):
+                logging.warning("Cache file root is not a dictionary - resetting cache")
+                COMMAND_CACHE = {}
+                return
             current_time = time.time()
             valid_cache = {}
-            
-            # Sort by timestamp (oldest first) if available, otherwise just process
-            # We need to handle legacy cache format (without timestamp)
             sorted_items = []
             for k, v in data.items():
                 if isinstance(v, dict) and "timestamp" in v:
                     sorted_items.append((k, v))
                 else:
-                    # Treat legacy items as new or discard? Let's keep them with current time
                     v["timestamp"] = current_time
                     sorted_items.append((k, v))
-            
-            # Sort by timestamp
+
             sorted_items.sort(key=lambda x: x[1]["timestamp"])
-            
-            # Keep only recent valid ones
             for k, v in sorted_items:
+                if not _validate_cache_entry(v, k):
+                    continue
                 if (current_time - v["timestamp"]) < (CACHE_EXPIRY_HOURS * 3600):
                     valid_cache[k] = v
-            
-            # Enforce Max Size (keep newest)
+
             if len(valid_cache) > CACHE_MAX_SIZE:
-                # Convert back to list to slice
                 items = list(valid_cache.items())
-                # Keep last N
                 valid_cache = dict(items[-CACHE_MAX_SIZE:])
                 
             COMMAND_CACHE = valid_cache
@@ -219,33 +339,25 @@ def click_element_by_name(name: str):
     """
     Clicks a UI element (Button, MenuItem, etc.) by its visible text using Accessibility APIs.
     More robust than coordinate-based clicks.
-    
+
     Args:
         name: The text/title of the element to click.
     """
     try:
-        # Try to find element in active window first
-        # We catch potential errors if no window is active or UIA fails
         try:
             from pywinauto import Desktop
             app = Desktop(backend="uia")
-            # Get the top window. 'active_only=True' in recent pywinauto versions might need specific handling
-            # window() without args gets the top window
             active_window = app.window(active_only=True)
             if not active_window.exists():
                  return "No active window found."
         except Exception as e:
             return f"Error connecting to active window: {e}"
 
-        # Search for element with matching title
-        # We try control_type="Button" first as most common
         try:
-             # Using exact match for now
              btn = active_window.child_window(title=name, control_type="Button").wrapper_object()
              btn.click_input()
              return f"Clicked button '{name}'."
         except:
-             # Try generic element
              try:
                  elem = active_window.child_window(title=name).wrapper_object()
                  elem.click_input()
@@ -255,6 +367,117 @@ def click_element_by_name(name: str):
 
     except Exception as e:
         return f"Error using UI Automation: {e}"
+
+async def smart_click_async(description: str, verify: bool = True) -> str:
+    """
+    Smart click that tries methods in order of reliability and speed:
+    1. UIA (Accessibility APIs) - <10ms, deterministic
+    2. Desktop State cache - <5ms, cached element positions
+    3. CV Template Matching - <50ms, visual but fast
+    4. LLM Vision - 500ms-2s, last resort
+
+    Args:
+        description: Description of element to click (e.g., "Save", "Submit", "Chrome icon")
+        verify: Whether to verify click succeeded via state change
+    """
+    import cv2
+    import numpy as np
+
+    update_status(f"🎯 Smart clicking: '{description}'")
+
+    ds = desktop_state.get_desktop_state()
+    ds.update(force=True)
+
+    if verify:
+        before_state = ds.get_state_summary()
+
+    elem = ds.find_element(description, fuzzy=True)
+    if elem and elem.center_x > 0 and elem.center_y > 0:
+        try:
+            pyautogui.click(elem.center_x, elem.center_y)
+            update_status(f"✅ UIA click: '{description}' at ({elem.center_x}, {elem.center_y})")
+
+            if verify:
+                await asyncio.sleep(0.15)
+                ds.update(force=True)
+                after_state = ds.get_state_summary()
+                if before_state != after_state:
+                    return f"Clicked '{description}' via UIA at ({elem.center_x}, {elem.center_y})"
+
+            return f"Clicked '{description}' via UIA at ({elem.center_x}, {elem.center_y})"
+        except Exception as e:
+            logging.warning(f"UIA click failed: {e}")
+
+    screenshot_path = take_screenshot()
+    if isinstance(screenshot_path, str) and "Error" in screenshot_path:
+        return await vision_click_async(description)
+
+    try:
+        img = cv2.imread(screenshot_path)
+        if img is not None:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+            h, w = gray.shape
+            search_regions = [
+                (0, 0, w, h),
+                (0, 0, w//2, h//2),
+                (w//2, 0, w//2, h//2),
+                (0, h//2, w, h//2),
+            ]
+
+            best_match = None
+            best_confidence = 0.0
+
+            for rx, ry, rw, rh in search_regions:
+                region = gray[ry:ry+rh, rx:rx+rw]
+                edges = cv2.Canny(region, 50, 150)
+                contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                for contour in contours:
+                    x, y, cw, ch = cv2.boundingRect(contour)
+                    if 20 < cw < 600 and 10 < ch < 150:
+                        roi = region[max(0, y-5):y+ch+5, max(0, x-5):x+cw+5]
+                        if roi.size > 0:
+                            mean_val = roi.mean()
+                            if mean_val > 180 or mean_val < 80:
+                                confidence = min(1.0, (mean_val - 100) / 100)
+                                if confidence > best_confidence:
+                                    best_confidence = confidence
+                                    best_match = (rx + x + cw//2, ry + y + ch//2)
+
+            if best_match and best_confidence > 0.5:
+                cx, cy = best_match
+                pyautogui.click(cx, cy)
+                update_status(f"✅ CV click: '{description}' at ({cx}, {cy})")
+                return f"Clicked '{description}' via CV at ({cx}, {cy})"
+
+    except Exception as e:
+        logging.warning(f"CV template matching failed: {e}")
+
+    update_status(f"👁️ Using vision AI for: '{description}'...")
+    return await vision_click_async(description)
+
+def smart_click(description: str) -> str:
+    """
+    Synchronous wrapper for smart click.
+    Tries UIA first, falls back to sync click_element_by_name or vision.
+    """
+    try:
+        ds = desktop_state.get_desktop_state()
+        ds.update(force=True)
+
+        elem = ds.find_element(description, fuzzy=True)
+        if elem and elem.center_x > 0 and elem.center_y > 0:
+            pyautogui.click(elem.center_x, elem.center_y)
+            return f"Clicked '{description}' via UIA at ({elem.center_x}, {elem.center_y})"
+
+        elem = ds.click_element(elem) if elem else None
+
+        return click_element_by_name(description)
+
+    except Exception as e:
+        logging.warning(f"Smart click UIA failed: {e}")
+        return click_element_by_name(description)
 
 def read_screen_text():
     """
@@ -516,19 +739,63 @@ def open_website(url: str):
 
 import pyperclip
 import pythoncom
+import re
+
+PROMPT_INJECTION_PATTERNS = [
+    r"(?i)ignore\s+(previous|all|your)\s+(instructions?|commands?)",
+    r"(?i)disregard\s+(previous|all|your)\s+(instructions?|commands?)",
+    r"(?i)you\s+are\s+(now|actually)\s+(jarvis|assistant|AI|BOT)",
+    r"(?i)forget\s+(everything|all|previous)\s+(you|instructions)",
+    r"(?i)new\s+instructions?:",
+    r"(?i)system\s+prompt:",
+    r"(?i)override\s+(security|restrictions?)",
+    r"(?i)jailbreak",
+    r"(?i) DAN\s+mode",
+    r"(?i)sudo\s+mode",
+    r"```system|```instructions|```prompt",
+    r"(?i)<\|(?:system|user|assistant)\|>",
+    r"(?i)\[INST\]\s*\[/INST\]",
+    r"<\s*script[^>]*>.*?</\s*script\s*>",
+    r"(?i)act\s+as\s+(?:a\s+)?new\s+(?:AI|assistant)",
+]
+
+_compiled_injection_patterns = [re.compile(p, re.IGNORECASE | re.DOTALL) for p in PROMPT_INJECTION_PATTERNS]
+
+
+def _detect_prompt_injection(text: str) -> bool:
+    if not text:
+        return False
+    for pattern in _compiled_injection_patterns:
+        if pattern.search(text):
+            return True
+    return False
+
+
+def _sanitize_clipboard_content(text: str) -> str:
+    if not text:
+        return ""
+    if _detect_prompt_injection(text):
+        logging.warning("Potential prompt injection detected in clipboard content - content will be masked")
+        return "[CLIPBOARD CONTENT REDACTED - Potential injection detected]"
+    if len(text) > 10000:
+        return text[:10000] + "... [truncated]"
+    return text
+
 
 def read_clipboard():
     """Reads the current text content from the clipboard.
-    
+
     Returns:
         The text currently stored in the clipboard.
     """
     try:
-        # Clipboard access on worker threads requires COM initialization
         pythoncom.CoInitialize()
         try:
             content = pyperclip.paste()
-            return f"Clipboard content: {content}"
+            sanitized = _sanitize_clipboard_content(content)
+            if sanitized != content:
+                return f"Clipboard content: {sanitized}"
+            return f"Clipboard content: {sanitized}"
         finally:
             pythoncom.CoUninitialize()
     except Exception as e:
@@ -719,47 +986,62 @@ def install_python_library(library_name: str):
 
 def create_file(file_path: str, content: str = ""):
     """Creates a file at the specified path with optional content and opens it.
-    
+
     Args:
         file_path: The path where the file should be created.
         content: The text content to write to the file.
     """
-    # Safe Mode Check
-    if config.SAFE_MODE:
-        short_content = (content[:50] + '...') if len(content) > 50 else content
-        if not ask_user_permission(f"Create file:\n{file_path}\nContent: {short_content}?"):
-            return f"Action blocked by user: Create {file_path}"
+    perm_system = get_permission_system()
+    needs_perm, action_type, description = perm_system.requires_permission("create_file", file_path, file_path)
+    if needs_perm:
+        if not perm_system.check_and_request("create_file", file_path, file_path):
+            return f"Action blocked: {description or 'create file'}"
 
     try:
-        # Enforce workspace for relative paths
         if not os.path.isabs(file_path):
             file_path = os.path.join(WORKSPACE_DIR, file_path)
-            
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-        # Safety Guardrail: Prevent writing to sensitive system directories
-        forbidden_paths = [
-            r"C:\Windows", 
-            r"C:\Program Files", 
-            r"C:\Program Files (x86)"
-        ]
-        # Normalize path for comparison
         abs_path = os.path.abspath(file_path)
-        for forbidden in forbidden_paths:
-            if abs_path.lower().startswith(forbidden.lower()):
+        try:
+            real_path = os.path.realpath(file_path)
+        except Exception:
+            real_path = abs_path
+
+        if perm_system.is_system_directory(real_path):
+            return f"Error: Access denied. Cannot write to protected system path"
+        path_parts = abs_path.split(os.sep)
+        if any('..' in part for part in path_parts):
+            return f"Error: Path traversal detected. Blocked."
+
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+
+        forbidden_prefixes = [
+            r"C:\Windows",
+            r"C:\Program Files",
+            r"C:\Program Files (x86)",
+            r"C:\System32",
+            r"C:\Boot",
+            r"C:\Recovery",
+            r"/etc/",
+            r"/bin/",
+            r"/sbin/",
+            r"/usr/bin/",
+            r"/usr/sbin/",
+        ]
+        real_abs = os.path.abspath(real_path)
+        for forbidden in forbidden_prefixes:
+            if real_abs.lower().startswith(forbidden.lower()):
                 return f"Error: Access denied. Cannot write to protected system path: {forbidden}"
 
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(abs_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        
-        # Auto-open the file to prove creation
-        try:
-            os.startfile(file_path)
-        except Exception:
-            pass # Fails on non-Windows, but we are on Windows
 
-        return f"Created and opened file: {file_path} with content length {len(content)}"
+        try:
+            os.startfile(abs_path)
+        except Exception:
+            pass
+
+        return f"Created and opened file: {abs_path} with content length {len(content)}"
     except Exception as e:
         return f"Error creating file: {e}"
 

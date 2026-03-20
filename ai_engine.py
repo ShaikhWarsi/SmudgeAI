@@ -8,6 +8,8 @@ import asyncio
 import inspect
 import json
 import groq
+import time
+import random
 from types import SimpleNamespace
 
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -88,9 +90,70 @@ groq_history = []
 current_groq_model_index = 0
 current_tools_list = []
 
+
+class RateLimiter:
+    _instance = None
+
+    def __init__(self):
+        self.requests_in_window = 0
+        self.window_start = time.time()
+        self.window_size = 60.0
+        self.max_requests_per_window = 30
+        self.blocked_until = 0
+        self.consecutive_errors = 0
+        self.max_consecutive_errors = 5
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def is_blocked(self) -> bool:
+        if time.time() < self.blocked_until:
+            return True
+        return False
+
+    def record_success(self):
+        self.consecutive_errors = 0
+
+    def record_error(self, is_rate_limit=False):
+        self.consecutive_errors += 1
+        if is_rate_limit or self.consecutive_errors >= self.max_consecutive_errors:
+            self.blocked_until = time.time() + self._calculate_backoff()
+            logging.warning(f"Rate limiter triggered. Blocked until {self.blocked_until}")
+
+    def _calculate_backoff(self) -> float:
+        base = 30.0
+        exponential = min(2 ** self.consecutive_errors, 60)
+        jitter = random.random() * 10
+        return min(base + exponential + jitter, 300)
+
+    def check_request(self) -> bool:
+        if self.is_blocked():
+            return False
+
+        now = time.time()
+        if now - self.window_start > self.window_size:
+            self.requests_in_window = 0
+            self.window_start = now
+
+        if self.requests_in_window >= self.max_requests_per_window:
+            self.blocked_until = now + (self.window_size - (now - self.window_start))
+            logging.warning(f"Rate limit window full. Blocked until {self.blocked_until}")
+            return False
+
+        self.requests_in_window += 1
+        return True
+
+_rate_limiter = RateLimiter.get_instance()
+
 async def _get_groq_response(messages, tools=None):
-    """Internal helper to get response from Groq with model cycling."""
+    """Internal helper to get response from Groq with model cycling and rate limiting."""
     global current_groq_model_index, groq_client
+
+    if not _rate_limiter.check_request():
+        return "Error: Rate limit exceeded. Please wait before making more requests."
 
     groq_tools = None
     if tools:
@@ -126,16 +189,19 @@ async def _get_groq_response(messages, tools=None):
                 **kwargs
             )
 
+            _rate_limiter.record_success()
             return completion
 
         except groq.RateLimitError:
             logging.warning(f"Rate limit hit for {model_name}. Cycling model...")
+            _rate_limiter.record_error(is_rate_limit=True)
             current_groq_model_index = (current_groq_model_index + 1) % len(GROQ_MODELS)
             await asyncio.sleep(2)
             continue
 
         except Exception as e:
             logging.error(f"Groq Error ({model_name}): {e}")
+            _rate_limiter.record_error()
             error_str = str(e).lower()
             if "rate limit" in error_str or "429" in error_str or "400" in error_str or "tool_use_failed" in error_str or "not found" in error_str:
                  current_groq_model_index = (current_groq_model_index + 1) % len(GROQ_MODELS)
@@ -186,9 +252,11 @@ Your goal is to accelerate development tasks: coding, debugging, and file manage
    - If the user says "Fix auth", call `read_project_context(keywords="auth, login")`.
 
 4. **Robust UI Automation**:
-   - **PREFERRED**: `click_element_by_name("Save")` (Accessibility APIs).
-   - **FALLBACK**: `computer_use_fallback("Click the Save button")` (Vision).
-   - **AVOID**: Blind guessing of coordinates.
+   - **PREFERRED**: `smart_click("Save")` or `smart_click_async("Save")` - tries UIA first, then CV, then vision.
+   - **ALTERNATIVE**: `click_element_by_name("Save")` (pure UIA).
+   - **FALLBACK**: `vision_click_async("Save")` (LLM vision - slow).
+   - **NEW**: Use `DesktopActions` for: `double_click`, `right_click`, `hover`, `drag`, `scroll`, `type_text`, `press_key`
+   - **AVOID**: Blind guessing of coordinates. Use smart_click.
 
 5. **Web Navigation (Playwright)**:
    - Use `browse_web(url)` to open a page.
@@ -250,6 +318,22 @@ def get_tool_schema(func):
             }
         }
     }
+
+def _message_to_dict(msg) -> dict:
+    """Convert a Groq ChatCompletionMessage to a plain dict for safe history storage."""
+    if isinstance(msg, dict):
+        return msg
+    result = {
+        "role": getattr(msg, "role", "assistant"),
+        "content": getattr(msg, "content", None)
+    }
+    tool_calls = getattr(msg, "tool_calls", None)
+    if tool_calls:
+        result["tool_calls"] = tool_calls
+    tool_call_id = getattr(msg, "tool_call_id", None)
+    if tool_call_id:
+        result["tool_call_id"] = tool_call_id
+    return result
 
 def initialize_model(tools_list):
     """Initializes the AI model (Gemini or Groq) globally."""
@@ -426,14 +510,10 @@ async def process_command(user_input, tools_map, screenshot_path=None):
         groq_history.append(user_msg)
         
         response = await _get_groq_response(groq_history, tools_list)
-        
+
         if hasattr(response, 'choices'):
             msg = response.choices[0].message
-            # Convert to dict for history if needed, but object is fine usually if handled correctly.
-            # However, for subsequent calls, we need the message in the history.
-            # Groq Python SDK 'ChatCompletionMessage' is an object.
-            # We can append the object directly as the SDK handles it.
-            groq_history.append(msg)
+            groq_history.append(_message_to_dict(msg))
             return response
         else:
             return str(response)

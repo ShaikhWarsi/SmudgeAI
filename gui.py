@@ -29,17 +29,34 @@ logging.basicConfig(
 
 class Worker(QObject):
     """Async Worker for handling background tasks without freezing UI."""
+    task_completed_signal = pyqtSignal(object)
+    task_error_signal = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.loop = asyncio.new_event_loop()
-        threading.Thread(target=self.start_loop, daemon=True).start()
+        self._thread = threading.Thread(target=self.start_loop, daemon=True)
+        self._thread.start()
+        self._pending_futures = {}
 
     def start_loop(self):
         asyncio.set_event_loop(self.loop)
         self.loop.run_forever()
 
     def run_task(self, coro):
-        asyncio.run_coroutine_threadsafe(coro, self.loop)
+        future = asyncio.run_coroutine_threadsafe(self._safe_task_wrapper(coro), self.loop)
+        return future
+
+    async def _safe_task_wrapper(self, coro):
+        try:
+            result = await coro
+            self.task_completed_signal.emit(result)
+            return result
+        except Exception as e:
+            error_msg = f"{type(e).__name__}: {str(e)}"
+            logging.error(f"Task failed with error: {error_msg}")
+            self.task_error_signal.emit(error_msg)
+            return None
 
 class ModernAssistant(QMainWindow):
     update_status_signal = pyqtSignal(str)
@@ -82,6 +99,10 @@ class ModernAssistant(QMainWindow):
         self.ask_permission_signal.connect(self.show_permission_dialog)
         self.tool_log_signal.connect(self.log_tool_execution)
         self.stop_signal.connect(self.stop_action)
+
+        # Worker task signals
+        self.worker.task_completed_signal.connect(self.on_task_completed)
+        self.worker.task_error_signal.connect(self.on_task_error)
 
         # Breathing Animation Timer
         self.glow_timer = QTimer(self)
@@ -755,6 +776,16 @@ class ModernAssistant(QMainWindow):
         task_manager.stop_execution()
         self.glow_timer.stop()
         self.update_status_signal.emit("Stopped.")
+
+    def on_task_completed(self, result):
+        if result is None:
+            return
+        logging.debug(f"Background task completed: {result}")
+
+    def on_task_error(self, error_msg: str):
+        logging.error(f"Task error: {error_msg}")
+        self.update_status_signal.emit(f"Error: {error_msg}")
+        self.show_result(f"Task failed: {error_msg}")
 
     def force_close(self):
         """Force close both GUI and terminal."""

@@ -7,6 +7,22 @@ from typing import List, Dict, Optional, Any
 from enum import Enum
 import threading
 
+_pywinauto_initialized = False
+
+def _ensure_pywinauto_com_init():
+    global _pywinauto_initialized
+    if _pywinauto_initialized:
+        return True
+    try:
+        import pythoncom
+        pythoncom.CoInitializeEx(None, pythoncom.COINIT_MULTITHREADED)
+        _pywinauto_initialized = True
+        logging.info("pywinauto COM initialized (MTA mode)")
+        return True
+    except Exception as e:
+        logging.error(f"Failed to initialize pywinauto COM: {e}")
+        return False
+
 
 class ElementType(Enum):
     WINDOW = "window"
@@ -139,6 +155,10 @@ class DesktopState:
     def _capture_window_hierarchy(self, window) -> List[UIElement]:
         elements = []
         tried_backends = []
+
+        if not _ensure_pywinauto_com_init():
+            logging.warning("pywinauto COM initialization failed, UI hierarchy will be unavailable")
+            return elements
 
         tried_backends.append("uia")
         try:

@@ -1411,3 +1411,64 @@ ERROR: No matching distribution found for spogo
 2026-03-20 14:32:20,968 - INFO - User said: thank you.
 2026-03-20 14:32:20,968 - INFO - Heard: thank you.
 2026-03-20 14:32:20,968 - INFO - Ignored command while processing (busy).
+2026-03-20 15:12:51,623 - INFO - Listening...
+2026-03-20 15:12:53,629 - INFO - Transcribing with Groq Whisper...
+2026-03-20 15:12:54,039 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 15:12:54,042 - INFO - User said: thank you.
+2026-03-20 15:12:54,042 - INFO - Heard: thank you.
+2026-03-20 15:12:54,042 - INFO - Executing task: thank you.
+2026-03-20 15:12:54,042 - INFO - Executing step: thank you.
+2026-03-20 15:12:54,107 - ERROR - Edge-TTS Error: music_drmp3: corrupt mp3 file (bad tags).
+2026-03-20 15:12:54,734 - INFO - Listening...
+2026-03-20 15:12:54,963 - INFO - Executing task: open chrome
+2026-03-20 15:12:54,963 - INFO - Executing step: open chrome
+2026-03-20 15:12:57,707 - ERROR - Edge-TTS Error: music_drmp3: corrupt mp3 file (bad tags).
+2026-03-20 15:13:00,993 - INFO - Transcribing with Groq Whisper...
+2026-03-20 15:13:01,212 - INFO - Executing task: open youtube
+2026-03-20 15:13:01,266 - ERROR - Edge-TTS Error: music_drmp3: corrupt mp3 file (bad tags).
+2026-03-20 15:13:01,266 - ERROR - Edge-TTS Error: music_drmp3: corrupt mp3 file (bad tags).
+2026-03-20 15:13:01,475 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 15:13:01,477 - INFO - User said: thank you for watching!
+2026-03-20 15:13:01,477 - INFO - Heard: thank you for watching!
+2026-03-20 15:13:01,478 - INFO - Executing task: thank you for watching!
+2026-03-20 15:13:01,478 - INFO - Executing step: thank you for watching!
+2026-03-20 15:13:01,517 - INFO - Context: [System State: Active Window='Untitled - Google Chrome', Open Apps=[SmudgeAI, Untitled - Google Chrome, Google Chrome, _meta.json - SmudgeAI-main - Trae, SmudgeAI-main - File Explorer], Clipboard='Thank you.']
+2026-03-20 15:13:01,774 - INFO - Initialized Groq Client with models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b']
+2026-03-20 15:13:01,776 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-20 15:13:02,281 - INFO - Listening...
+2026-03-20 15:13:02,379 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-20 15:13:02,397 - INFO - Groq requested tool: write_to_clipboard with args: {'text': 'Thank you for watching!'}
+2026-03-20 15:13:02,412 - INFO - Tool Result (write_to_clipboard): Text copied to clipboard.
+[System State: Active Window='SmudgeAI', Open Apps=[SmudgeAI, YouTube - Google Chrome, Google Chrome, _meta.json - SmudgeAI-main - Trae, SmudgeAI-main - File Explorer], Clipboard='Thank you for watching!']
+2026-03-20 15:13:02,413 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-20 15:13:02,455 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-20 15:13:02,456 - INFO - Retrying request to /openai/v1/chat/completions in 48.000000 seconds
+2026-03-20 15:13:04,066 - INFO - Executing task: open twitter
+2026-03-20 15:13:04,066 - INFO - Executing step: open twitter
+2026-03-20 15:13:04,076 - INFO - Context: [System State: Active Window='SmudgeAI', Open Apps=[SmudgeAI, YouTube - Google Chrome, Google Chrome, _meta.json - SmudgeAI-main - Trae, SmudgeAI-main - File Explorer], Clipboard='Thank you for watching!']
+2026-03-20 15:13:04,077 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-20 15:13:04,127 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-20 15:13:04,128 - INFO - Retrying request to /openai/v1/chat/completions in 47.000000 seconds
+2026-03-20 15:13:05,941 - INFO - Transcribing with Groq Whisper...
+2026-03-20 15:13:06,209 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 15:13:06,210 - INFO - User said: thank you for watching!
+2026-03-20 15:13:06,210 - INFO - Heard: thank you for watching!
+2026-03-20 15:13:06,210 - INFO - Ignored command while processing (busy).
+2026-03-20 15:13:06,794 - INFO - Listening...
+2026-03-20 15:13:09,383 - INFO - Transcribing with Groq Whisper...
+2026-03-20 15:13:09,631 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 15:13:09,632 - INFO - User said: thank you.
+2026-03-20 15:13:09,632 - INFO - Heard: thank you.
+2026-03-20 15:13:09,632 - INFO - Ignored command while processing (busy).
+2026-03-20 15:13:10,215 - INFO - Listening...
+2026-03-20 15:13:12,757 - INFO - Transcribing with Groq Whisper...
+2026-03-20 15:13:13,010 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 15:13:13,011 - INFO - User said: okay.
+2026-03-20 15:13:13,011 - INFO - Heard: okay.
+2026-03-20 15:13:13,011 - INFO - Ignored command while processing (busy).
+2026-03-20 15:13:14,633 - INFO - Executing task: open twitter
+2026-03-20 15:13:14,633 - INFO - Executing step: open twitter
+2026-03-20 15:13:14,639 - INFO - Context: [System State: Active Window='SmudgeAI', Open Apps=[SmudgeAI, _meta.json - SmudgeAI-main - Trae, (3) YouTube - Google Chrome, Google Chrome, SmudgeAI-main - File Explorer], Clipboard='Thank you for watching!']
+2026-03-20 15:13:14,640 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-20 15:13:14,863 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-20 15:13:14,864 - INFO - Retrying request to /openai/v1/chat/completions in 37.000000 seconds
