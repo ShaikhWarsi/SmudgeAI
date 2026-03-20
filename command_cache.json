@@ -19,5 +19,12 @@
       "text": "Thank you."
     },
     "timestamp": 1773995878.8879418
+  },
+  "open amd youtube": {
+    "tool": "open_application",
+    "args": {
+      "app_name": "amd"
+    },
+    "timestamp": 1773997326.3240094
   }
 }

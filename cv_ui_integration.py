@@ -11,6 +11,7 @@ import pyautogui
 import numpy as np
 import ai_engine
 import desktop_state
+import local_vlm
 
 try:
     import torch
@@ -246,6 +247,29 @@ class UIElementDetector:
 
     async def _detect_with_llm_vision(self, screenshot_path: str, prompt: Optional[str]) -> List[DetectedElement]:
         elements = []
+
+        local_vlm_instance = local_vlm.get_local_vlm()
+        is_local_available = await local_vlm_instance.check_availability()
+
+        if is_local_available:
+            try:
+                result = await local_vlm_instance.analyze_image(screenshot_path, prompt)
+                if result.elements:
+                    for elem_data in result.elements:
+                        elem = DetectedElement(
+                            x=int(elem_data.get("x", 0)),
+                            y=int(elem_data.get("y", 0)),
+                            width=int(elem_data.get("width", 50)),
+                            height=int(elem_data.get("height", 30)),
+                            label=elem_data.get("label", "Unknown"),
+                            confidence=float(elem_data.get("confidence", 0.6)),
+                            element_type=elem_data.get("type", "unknown")
+                        )
+                        elements.append(elem)
+                    logging.info(f"Local VLM detected {len(elements)} elements in {result.latency_ms:.0f}ms")
+                    return elements
+            except Exception as e:
+                logging.warning(f"Local VLM failed, falling back to cloud: {e}")
 
         if not prompt:
             prompt = """Identify all interactive UI elements in this screenshot.

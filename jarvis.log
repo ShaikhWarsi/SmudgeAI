@@ -1311,3 +1311,103 @@ ERROR: No matching distribution found for spogo
 2026-03-20 14:07:07,852 - INFO - Retrying request to /openai/v1/chat/completions in 53.000000 seconds
 2026-03-20 14:07:58,886 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
 2026-03-20 14:07:58,887 - INFO - Groq requested tool: write_to_clipboard with args: {'text': 'Thank you.'}
+2026-03-20 14:13:49,328 - INFO - Listening...
+2026-03-20 14:26:22,770 - INFO - Listening...
+2026-03-20 14:26:24,593 - INFO - Transcribing with Groq Whisper...
+2026-03-20 14:26:25,246 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 14:26:25,246 - INFO - User said: thank you.
+2026-03-20 14:26:25,246 - INFO - Heard: thank you.
+2026-03-20 14:26:25,246 - INFO - Executing task: thank you.
+2026-03-20 14:26:25,246 - INFO - Executing step: thank you.
+2026-03-20 14:26:25,541 - ERROR - Edge-TTS Error: Cannot connect to host speech.platform.bing.com:443 ssl:<ssl.SSLContext object at 0x0000013F8E254170> [Could not contact DNS servers]
+2026-03-20 14:26:25,600 - INFO - Executing task: open chrome
+2026-03-20 14:26:25,601 - INFO - Executing step: open chrome
+2026-03-20 14:26:25,936 - INFO - Listening...
+2026-03-20 14:26:28,496 - INFO - Transcribing with Groq Whisper...
+2026-03-20 14:26:28,831 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 14:26:28,832 - INFO - User said: thank you.
+2026-03-20 14:26:28,832 - INFO - Heard: thank you.
+2026-03-20 14:26:28,832 - INFO - Ignored command while processing (busy).
+2026-03-20 14:26:29,432 - INFO - Listening...
+2026-03-20 14:26:30,139 - ERROR - Edge-TTS Error: music_drmp3: corrupt mp3 file (bad tags).
+2026-03-20 14:26:36,204 - INFO - Transcribing with Groq Whisper...
+2026-03-20 14:26:36,920 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 14:26:36,921 - INFO - User said: thank you for watching!
+2026-03-20 14:26:36,921 - INFO - Heard: thank you for watching!
+2026-03-20 14:26:36,921 - INFO - Executing task: thank you for watching!
+2026-03-20 14:26:36,921 - INFO - Executing step: thank you for watching!
+2026-03-20 14:26:37,210 - INFO - Initialized Groq Client with models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b']
+2026-03-20 14:26:37,210 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-20 14:26:37,547 - INFO - Executing task: open youtube channel of amd
+2026-03-20 14:26:37,547 - INFO - Executing step: open youtube channel of amd
+2026-03-20 14:26:37,557 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-20 14:26:37,730 - INFO - Listening...
+2026-03-20 14:26:37,794 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-20 14:26:37,794 - INFO - Retrying request to /openai/v1/chat/completions in 47.000000 seconds
+2026-03-20 14:26:38,455 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 400 Bad Request"
+2026-03-20 14:26:38,456 - ERROR - Groq Error (llama-3.1-8b-instant): Error code: 400 - {'error': {'message': "Failed to call a function. Please adjust your prompt. See 'failed_generation' for more details.", 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '<function=write_to_clipboard={"text": "Thanks again! "}>'}}
+2026-03-20 14:26:39,711 - INFO - Transcribing with Groq Whisper...
+2026-03-20 14:26:39,991 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 14:26:39,992 - INFO - User said: thank you.
+2026-03-20 14:26:39,992 - INFO - Heard: thank you.
+2026-03-20 14:26:39,992 - INFO - Ignored command while processing (busy).
+2026-03-20 14:26:40,457 - ERROR - Edge-TTS Error: music_drmp3: corrupt mp3 file (bad tags).
+2026-03-20 14:26:40,579 - INFO - Listening...
+2026-03-20 14:26:42,170 - INFO - Transcribing with Groq Whisper...
+2026-03-20 14:26:42,412 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 14:26:42,413 - INFO - User said: thank you.
+2026-03-20 14:26:42,413 - INFO - Heard: thank you.
+2026-03-20 14:26:42,414 - INFO - Executing task: thank you.
+2026-03-20 14:26:42,414 - INFO - Executing step: thank you.
+2026-03-20 14:26:42,418 - ERROR - Edge-TTS Error: music_drmp3: corrupt mp3 file (bad tags).
+2026-03-20 14:26:46,374 - INFO - Executing task: open amd's youtube channel
+2026-03-20 14:26:46,375 - INFO - Executing step: open amd's youtube channel
+2026-03-20 14:26:46,382 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-20 14:26:46,750 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-20 14:26:46,751 - INFO - Retrying request to /openai/v1/chat/completions in 39.000000 seconds
+2026-03-20 14:32:01,870 - INFO - Listening...
+2026-03-20 14:32:03,781 - INFO - Transcribing with Groq Whisper...
+2026-03-20 14:32:04,501 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 14:32:04,502 - INFO - User said: thank you.
+2026-03-20 14:32:04,502 - INFO - Heard: thank you.
+2026-03-20 14:32:04,502 - INFO - Executing task: thank you.
+2026-03-20 14:32:04,502 - INFO - Executing step: thank you.
+2026-03-20 14:32:04,527 - ERROR - Edge-TTS Error: music_drmp3: corrupt mp3 file (bad tags).
+2026-03-20 14:32:05,196 - INFO - Listening...
+2026-03-20 14:32:05,357 - INFO - Executing task: open amd youtube
+2026-03-20 14:32:05,357 - INFO - Executing step: open amd youtube
+2026-03-20 14:32:05,561 - INFO - Initialized Groq Client with models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b']
+2026-03-20 14:32:05,562 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-20 14:32:06,312 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2026-03-20 14:32:06,324 - INFO - Groq requested tool: open_application with args: {'app_name': 'amd'}
+2026-03-20 14:32:07,226 - INFO - Transcribing with Groq Whisper...
+2026-03-20 14:32:07,482 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 14:32:07,482 - INFO - User said: thank you.
+2026-03-20 14:32:07,483 - INFO - Heard: thank you.
+2026-03-20 14:32:07,483 - INFO - Ignored command while processing (busy).
+2026-03-20 14:32:08,069 - INFO - Listening...
+2026-03-20 14:32:08,678 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-20 14:32:08,758 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-20 14:32:08,758 - INFO - Retrying request to /openai/v1/chat/completions in 45.000000 seconds
+2026-03-20 14:32:11,119 - INFO - Transcribing with Groq Whisper...
+2026-03-20 14:32:11,392 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 14:32:11,392 - INFO - User said: thank you for watching.
+2026-03-20 14:32:11,393 - INFO - Heard: thank you for watching.
+2026-03-20 14:32:11,393 - INFO - Ignored command while processing (busy).
+2026-03-20 14:32:11,972 - INFO - Listening...
+2026-03-20 14:32:14,799 - INFO - Executing task: open amd's youtube channel
+2026-03-20 14:32:14,799 - INFO - Executing step: open amd's youtube channel
+2026-03-20 14:32:14,809 - INFO - Using Groq Model: llama-3.1-8b-instant
+2026-03-20 14:32:14,975 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-03-20 14:32:14,976 - INFO - Retrying request to /openai/v1/chat/completions in 40.000000 seconds
+2026-03-20 14:32:15,953 - INFO - Transcribing with Groq Whisper...
+2026-03-20 14:32:16,274 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 14:32:16,275 - INFO - User said: thank you for watching!
+2026-03-20 14:32:16,275 - INFO - Heard: thank you for watching!
+2026-03-20 14:32:16,275 - INFO - Ignored command while processing (busy).
+2026-03-20 14:32:16,859 - INFO - Listening...
+2026-03-20 14:32:20,702 - INFO - Transcribing with Groq Whisper...
+2026-03-20 14:32:20,966 - INFO - HTTP Request: POST https://api.groq.com/openai/v1/audio/transcriptions "HTTP/1.1 200 OK"
+2026-03-20 14:32:20,968 - INFO - User said: thank you.
+2026-03-20 14:32:20,968 - INFO - Heard: thank you.
+2026-03-20 14:32:20,968 - INFO - Ignored command while processing (busy).

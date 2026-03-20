@@ -19,4 +19,7 @@ faster-whisper
 psutil
 opencv-python
 numpy
+aiohttp
+chromadb
+sentence-transformers
 
